@@ -330,8 +330,9 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
     <!-- Área profesor -->
 
     <div class="page" id="page-alumnos">
-      <div class="ph"><div><h1 class="pt">Mis Alumnos</h1><p class="ps">Gestión del grupo</p></div>
-      <button class="btn btn-p" onclick="abrirModalAlumno()">+ Añadir alumno</button></div>
+      <div class="ph"><div><h1 class="pt">Mis Alumnos</h1>
+      <p class="ps">Los alumnos aparecen automáticamente cuando acceden con su cuenta del centro · <span id="alumnos-sub"></span></p></div>
+      <button class="btn btn-sm" onclick="renderAlumnos()" style="font-size:12px">↻ Actualizar</button></div>
       <div id="alumnos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:11px"></div>
     </div>
     <div class="page" id="page-evaluacion">
