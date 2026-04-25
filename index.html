@@ -2215,30 +2215,260 @@ function renderEvaluacionAlumno(cont){
 // ── MATERIALES ─────────────────────────────────────────
 // ── ALUMNOS ─────────────────────────────────────────────
 function renderAlumnos(){
-  var sub = document.getElementById('alumnos-sub');
-  if(sub) sub.textContent = DB.alumnos.length + ' alumnos';
   var grid = document.getElementById('alumnos-grid');
   if(!grid) return;
-  if(!DB.alumnos.length){
-    grid.innerHTML = '<div class="card"><p style="color:var(--muted);font-size:13px;text-align:center;padding:1.5rem">'+
-      (ROL==='profesor'?'Sin alumnos. Añade el primero pulsando el botón.':'No hay alumnos registrados.')+'</p></div>';
+  grid.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);gap:10px">'+
+    '<div style="width:20px;height:20px;border:2px solid var(--border-md);border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite"></div>'+
+    'Cargando datos de alumnos…</div>';
+
+  if(!USUARIO_ACTUAL || USUARIO_ACTUAL.rol !== 'docente'){
+    grid.innerHTML = '<div class="card"><p style="color:var(--muted);font-size:13px;text-align:center;padding:1.5rem">Solo el docente puede ver esta sección.</p></div>';
     return;
   }
-  grid.innerHTML = DB.alumnos.map(function(al){
-    return '<div class="card" style="padding:1rem">'+
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+
-        '<div style="width:38px;height:38px;border-radius:50%;background:var(--navy);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">'+
-          (al.nombre?al.nombre[0].toUpperCase():'?')+
-        '</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+al.nombre+' '+al.apellidos+'</div>'+
-          (al.email?'<div style="font-size:11px;color:var(--muted)">'+al.email+'</div>':'')+
-        '</div>'+
+
+  cargarPanelAlumnos(grid);
+}
+
+async function cargarPanelAlumnos(grid){
+  try {
+    // 1. Cargar todos los perfiles de alumnos
+    var {data:perfilesData, error:e1} = await supa
+      .from('perfiles')
+      .select('*')
+      .eq('rol','alumno')
+      .order('nombre');
+
+    if(e1 || !perfilesData || perfilesData.length === 0){
+      grid.innerHTML = '<div class="card"><div class="card-body" style="text-align:center;padding:2rem;color:var(--muted)">'+
+        '<div style="font-size:2.5rem;margin-bottom:1rem">👥</div>'+
+        '<div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:6px">Sin alumnos registrados</div>'+
+        '<div style="font-size:13px">Los alumnos aparecerán aquí cuando accedan por primera vez con su cuenta del centro.</div>'+
+      '</div></div>';
+      return;
+    }
+
+    // 2. Cargar ejercicios realizados
+    var {data:ejercicios} = await supa
+      .from('ejercicios_realizados')
+      .select('alumno_id, simulador_id, nivel, puntuacion, created_at, completado')
+      .eq('completado', true);
+
+    // 3. Cargar accesos
+    var {data:accesos} = await supa
+      .from('accesos')
+      .select('usuario_id, created_at')
+      .order('created_at', {ascending: false});
+
+    // 4. Cargar simuladores para nombres
+    var {data:simuladoresData} = await supa
+      .from('simuladores')
+      .select('id, nombre, codigo, bloque');
+
+    var simMap = {};
+    (simuladoresData||[]).forEach(function(s){ simMap[s.id] = s; });
+
+    // Actualizar subtítulo
+    var sub = document.getElementById('alumnos-sub');
+    if(sub) sub.textContent = perfilesData.length + ' alumno' + (perfilesData.length!==1?'s':'') + ' registrado' + (perfilesData.length!==1?'s':'');
+
+    // Render panel
+    grid.innerHTML = renderPanelDocente(perfilesData, ejercicios||[], accesos||[], simMap);
+
+  } catch(err){
+    console.error('Error cargando panel alumnos:', err);
+    grid.innerHTML = '<div class="card"><p style="color:var(--red);padding:1rem">Error al cargar los datos: '+err.message+'</p></div>';
+  }
+}
+
+function renderPanelDocente(perfiles, ejercicios, accesos, simMap){
+  var html = '';
+
+  // ── Estadísticas globales ──────────────────────────
+  var totalEj = ejercicios.length;
+  var mediaGlobal = totalEj > 0 ? Math.round(ejercicios.reduce(function(s,e){return s+(e.puntuacion||0);},0)/totalEj) : 0;
+  var alumnosActivos = new Set(ejercicios.map(function(e){return e.alumno_id;})).size;
+
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">';
+  html += mkStatCard('👥', perfiles.length, 'Alumnos registrados', '');
+  html += mkStatCard('✅', alumnosActivos, 'Con ejercicios realizados', 'pos');
+  html += mkStatCard('📊', mediaGlobal + '%', 'Media global del grupo', mediaGlobal>=70?'pos':mediaGlobal>=50?'':'neg');
+  html += '</div>';
+
+  // ── Tabla de alumnos ──────────────────────────────
+  html += '<div class="card"><div class="card-header"><div class="card-title">📋 Seguimiento individual</div>'+
+    '<div style="font-size:12px;color:var(--muted)">Pulsa en un alumno para ver el detalle</div></div>'+
+    '<div class="card-body" style="padding:0">'+
+    '<div style="overflow-x:auto">'+
+    '<table class="dt" style="width:100%"><thead><tr>'+
+    '<th style="text-align:left;padding:10px 14px">Alumno</th>'+
+    '<th>Ejercicios</th>'+
+    '<th>Media</th>'+
+    '<th>Nivel máx.</th>'+
+    '<th>Último acceso</th>'+
+    '<th>Último ejercicio</th>'+
+    '<th></th>'+
+    '</tr></thead><tbody>';
+
+  perfiles.forEach(function(perfil){
+    var ejAlumno = ejercicios.filter(function(e){return e.alumno_id === perfil.id;});
+    var accAlumno = accesos.filter(function(a){return a.usuario_id === perfil.id;});
+    var numEj = ejAlumno.length;
+    var media = numEj > 0 ? Math.round(ejAlumno.reduce(function(s,e){return s+(e.puntuacion||0);},0)/numEj) : null;
+    var ultimoAcceso = accAlumno.length > 0 ? new Date(accAlumno[0].created_at) : null;
+    var ultimoEj = ejAlumno.length > 0 ? new Date(Math.max.apply(null, ejAlumno.map(function(e){return new Date(e.created_at);}))) : null;
+
+    // Nivel máximo alcanzado
+    var nivMax = 'Sin ejercicios';
+    if(ejAlumno.some(function(e){return e.nivel==='avanzado';})) nivMax = '⭐⭐⭐ Avanzado';
+    else if(ejAlumno.some(function(e){return e.nivel==='medio';})) nivMax = '⭐⭐ Medio';
+    else if(ejAlumno.some(function(e){return e.nivel==='basico';})) nivMax = '⭐ Básico';
+
+    var mediaCol = media===null?'var(--muted)':media>=70?'var(--green)':media>=50?'var(--amber)':'var(--red)';
+    var avatarHtml = perfil.avatar_url
+      ? '<img src="'+perfil.avatar_url+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover">'
+      : '<div style="width:32px;height:32px;border-radius:50%;background:var(--navy);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">'+(perfil.nombre||'?')[0].toUpperCase()+'</div>';
+
+    html += '<tr style="cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'" onclick="verDetalleAlumno(\''+perfil.id+'\')">'+
+      '<td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:10px">'+avatarHtml+
+        '<div><div style="font-size:13px;font-weight:600">'+perfil.nombre+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+perfil.email+'</div></div></div></td>'+
+      '<td style="text-align:center;font-weight:700;color:var(--navy)">'+numEj+'</td>'+
+      '<td style="text-align:center"><span style="font-weight:700;color:'+mediaCol+'">'+(media!==null?media+'%':'—')+'</span></td>'+
+      '<td style="text-align:center;font-size:12px">'+nivMax+'</td>'+
+      '<td style="text-align:center;font-size:12px;color:var(--muted)">'+(ultimoAcceso?fmtFecha(ultimoAcceso):'Nunca')+'</td>'+
+      '<td style="text-align:center;font-size:12px;color:var(--muted)">'+(ultimoEj?fmtFecha(ultimoEj):'—')+'</td>'+
+      '<td style="text-align:center"><button class="btn-sm" onclick="event.stopPropagation();verDetalleAlumno(\''+perfil.id+'\')" style="font-size:11px">Ver →</button></td>'+
+    '</tr>';
+  });
+
+  html += '</tbody></table></div></div></div>';
+  return html;
+}
+
+function mkStatCard(ico, val, label, tipo){
+  var col = tipo==='pos'?'var(--green)':tipo==='neg'?'var(--red)':'var(--navy)';
+  return '<div class="card" style="padding:1rem;text-align:center">'+
+    '<div style="font-size:1.8rem;margin-bottom:4px">'+ico+'</div>'+
+    '<div style="font-family:\'Playfair Display\',serif;font-size:1.6rem;font-weight:700;color:'+col+'">'+val+'</div>'+
+    '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+label+'</div>'+
+  '</div>';
+}
+
+function fmtFecha(d){
+  var ahora = new Date();
+  var diff = ahora - d;
+  var mins = Math.floor(diff/60000);
+  var horas = Math.floor(diff/3600000);
+  var dias = Math.floor(diff/86400000);
+  if(mins < 60) return 'Hace '+mins+' min';
+  if(horas < 24) return 'Hace '+horas+'h';
+  if(dias === 1) return 'Ayer';
+  if(dias < 7) return 'Hace '+dias+' días';
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+
+async function verDetalleAlumno(alumnoId){
+  var grid = document.getElementById('alumnos-grid');
+  if(!grid) return;
+  grid.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);gap:10px">'+
+    '<div style="width:20px;height:20px;border:2px solid var(--border-md);border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite"></div>'+
+    'Cargando detalle…</div>';
+
+  // Load all data for this student
+  var [{data:perfil},{data:ejercicios},{data:accesosAl},{data:sims}] = await Promise.all([
+    supa.from('perfiles').select('*').eq('id',alumnoId).single(),
+    supa.from('ejercicios_realizados').select('*').eq('alumno_id',alumnoId).eq('completado',true).order('created_at',{ascending:false}),
+    supa.from('accesos').select('*').eq('usuario_id',alumnoId).order('created_at',{ascending:false}).limit(20),
+    supa.from('simuladores').select('*'),
+  ]);
+
+  var simMap = {};
+  (sims||[]).forEach(function(s){ simMap[s.id] = s; });
+
+  var html = '<button class="btn-sm" onclick="renderAlumnos()" style="margin-bottom:1rem">← Volver al grupo</button>';
+
+  // Header alumno
+  var avatarHtml = (perfil&&perfil.avatar_url)
+    ? '<img src="'+perfil.avatar_url+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover">'
+    : '<div style="width:56px;height:56px;border-radius:50%;background:var(--navy);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700">'+((perfil&&perfil.nombre)||'?')[0].toUpperCase()+'</div>';
+
+  var numEj = (ejercicios||[]).length;
+  var media = numEj>0 ? Math.round(ejercicios.reduce(function(s,e){return s+(e.puntuacion||0);},0)/numEj) : null;
+
+  html += '<div class="card" style="margin-bottom:1rem"><div class="card-body">'+
+    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:1rem">'+
+      avatarHtml+
+      '<div><div style="font-size:1.1rem;font-weight:700;color:var(--navy)">'+(perfil?perfil.nombre:'Alumno')+'</div>'+
+        '<div style="font-size:12px;color:var(--muted)">'+(perfil?perfil.email:'')+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">Registrado el '+(perfil?new Date(perfil.created_at).toLocaleDateString('es-ES'):'—')+'</div>'+
       '</div>'+
-      (ROL==='profesor'?
-        '<button class="btn btn-d btn-sm" style="font-size:11px;width:100%" onclick="borrarAlumno(\"'+al.id+'\")">✕ Eliminar</button>':'')+
-    '</div>';
-  }).join('');
+      '<div style="margin-left:auto;text-align:right">'+
+        '<div style="font-family:\'Playfair Display\',serif;font-size:2rem;font-weight:700;color:'+(media===null?'var(--muted)':media>=70?'var(--green)':media>=50?'var(--amber)':'var(--red)')+'">'+
+          (media!==null?media+'%':'—')+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">Media general</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+
+      mkStatCard('📝', numEj, 'Ejercicios realizados', '')+
+      mkStatCard('🔑', (accesosAl||[]).length, 'Accesos registrados', '')+
+      mkStatCard('🏆', numEj>0?(ejercicios.some(function(e){return e.nivel==='avanzado';})?'Avanzado':ejercicios.some(function(e){return e.nivel==='medio';})?'Medio':'Básico'):'—', 'Nivel máximo', '')+
+    '</div>'+
+  '</div></div>';
+
+  // Ejercicios por simulador
+  html += '<div class="card" style="margin-bottom:1rem"><div class="card-header"><div class="card-title">📊 Ejercicios por simulador</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr>'+
+    '<th style="text-align:left;padding:8px 14px">Simulador</th><th>Bloque</th><th>Ejercicios</th><th>Media</th><th>Nivel actual</th><th>Último</th>'+
+    '</tr></thead><tbody>';
+
+  // Group by simulator
+  var porSim = {};
+  (ejercicios||[]).forEach(function(e){
+    if(!porSim[e.simulador_id]) porSim[e.simulador_id] = [];
+    porSim[e.simulador_id].push(e);
+  });
+
+  if(Object.keys(porSim).length === 0){
+    html += '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">Sin ejercicios realizados todavía.</td></tr>';
+  } else {
+    Object.keys(porSim).forEach(function(simId){
+      var lista = porSim[simId];
+      var s = simMap[simId] || {nombre:'Desconocido', codigo:'—', bloque:'—'};
+      var mediaSim = Math.round(lista.reduce(function(acc,e){return acc+(e.puntuacion||0);},0)/lista.length);
+      var nivelActual = lista[0].nivel; // most recent
+      var ultimo = new Date(lista[0].created_at);
+      var medCol = mediaSim>=70?'var(--green)':mediaSim>=50?'var(--amber)':'var(--red)';
+      html += '<tr>'+
+        '<td style="padding:8px 14px;font-size:13px;font-weight:600">'+s.nombre+'</td>'+
+        '<td style="text-align:center"><span class="badge b-blue" style="font-size:10px">'+s.bloque+'</span></td>'+
+        '<td style="text-align:center">'+lista.length+'</td>'+
+        '<td style="text-align:center;font-weight:700;color:'+medCol+'">'+mediaSim+'%</td>'+
+        '<td style="text-align:center;font-size:12px">'+(nivelActual==='avanzado'?'⭐⭐⭐':nivelActual==='medio'?'⭐⭐':'⭐')+' '+nivelActual.charAt(0).toUpperCase()+nivelActual.slice(1)+'</td>'+
+        '<td style="text-align:center;font-size:12px;color:var(--muted)">'+fmtFecha(ultimo)+'</td>'+
+      '</tr>';
+    });
+  }
+  html += '</tbody></table></div></div>';
+
+  // Historial de accesos
+  html += '<div class="card"><div class="card-header"><div class="card-title">🔑 Historial de accesos</div>'+
+    '<div style="font-size:12px;color:var(--muted)">Últimos 20 accesos</div></div>'+
+    '<div class="card-body" style="padding:0"><table class="dt" style="width:100%">'+
+    '<thead><tr><th style="text-align:left;padding:8px 14px">Fecha y hora</th><th>Hace</th></tr></thead><tbody>';
+
+  if(!accesosAl || accesosAl.length === 0){
+    html += '<tr><td colspan="2" style="text-align:center;padding:1rem;color:var(--muted)">Sin accesos registrados.</td></tr>';
+  } else {
+    accesosAl.forEach(function(a){
+      var d = new Date(a.created_at);
+      html += '<tr>'+
+        '<td style="padding:8px 14px;font-size:13px">'+d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</td>'+
+        '<td style="text-align:center;font-size:12px;color:var(--muted)">'+fmtFecha(d)+'</td>'+
+      '</tr>';
+    });
+  }
+  html += '</tbody></table></div></div>';
+
+  grid.innerHTML = html;
 }
 
 function abrirModalAlumno(){
@@ -12318,6 +12548,16 @@ function corregirTodo(){
     '<button class="btn-nuevo" style="margin-left:8px;background:var(--surface2);color:var(--navy);border:1.5px solid var(--border)" onclick="verSolucion()">👁 Ver solución completa</button>'+
   '</div>';
   div.scrollIntoView({behavior:'smooth',block:'start'});
+  // Notificar a la app principal
+  try {
+    window.parent.postMessage({
+      tipo:       'ejercicio_completado',
+      simulador:  'sim-prestamos',
+      nivel:      EJ.nivel,
+      puntuacion: pct,
+      timestamp:  new Date().toISOString()
+    }, '*');
+  } catch(e){}
 }
 
 function verSolucion(){
@@ -13152,6 +13392,14 @@ function flash(msg){
 window.addEventListener('load', function(){
   calcular();
 });
+
+// Escuchar nivel adaptativo de la app principal
+window.addEventListener('message', function(e){
+  if(!e.data || e.data.tipo !== 'set_nivel_prestamos') return;
+  if(['basico','medio','avanzado'].includes(e.data.nivel)){
+    EJ.nivel = e.data.nivel;
+  }
+});
 </script>
 
 <!-- FAB Informe -->
@@ -13177,10 +13425,6 @@ window.addEventListener('load', function(){
 
 <!-- Contenedor de impresión -->
 <div id="print-root"></div>
-
-</div><!-- /app-shell -->
-
-
 
 </body>
 </html>
@@ -14539,6 +14783,16 @@ function corregirEjTotal(){
     '<button class="btn-nuevo" style="margin-left:8px;background:var(--surface2);color:var(--navy);border:1.5px solid var(--border)" onclick="verSolEj()">👁 Ver solución</button>'+
   '</div>';
   if(r) r.scrollIntoView({behavior:'smooth',block:'start'});
+  // Notificar a la app principal
+  try {
+    window.parent.postMessage({
+      tipo:       'ejercicio_completado',
+      simulador:  'sim-pb',
+      nivel:      EJ.nivel,
+      puntuacion: pct,
+      timestamp:  new Date().toISOString()
+    }, '*');
+  } catch(e){}
 }
 
 function verSolEj(){
@@ -15423,6 +15677,14 @@ function esc(s){if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&
 function flash(msg){var el=document.getElementById('flash');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
 
 window.addEventListener('load',function(){ renderPanel(); });
+
+// Escuchar nivel adaptativo de la app principal
+window.addEventListener('message', function(e){
+  if(!e.data || e.data.tipo !== 'set_nivel_pb') return;
+  if(['basico','medio','avanzado'].includes(e.data.nivel)){
+    EJ.nivel = e.data.nivel;
+  }
+});
 </script>
 </body>
 </html>
@@ -16579,6 +16841,16 @@ function corregirDetector(){
     '<button class="btn-nuevo" onclick="generarEjercicioDetector()">🎲 Nuevo ejercicio</button>'+
   '</div>';
   if(res) res.scrollIntoView({behavior:'smooth',block:'start'});
+  // Notificar a la app principal
+  try {
+    window.parent.postMessage({
+      tipo:       'ejercicio_completado',
+      simulador:  'sim-presupuestos',
+      nivel:      EJ_NIVEL,
+      puntuacion: pct,
+      timestamp:  new Date().toISOString()
+    }, '*');
+  } catch(e){}
 }
 
 function verSolucionDetector(){
@@ -17030,6 +17302,14 @@ function exportarExcelPres(){
 function flash(msg){var el=document.getElementById('flash');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
 
 window.addEventListener('load',function(){setModo('constructor');});
+
+// Escuchar nivel adaptativo de la app principal
+window.addEventListener('message', function(e){
+  if(!e.data || e.data.tipo !== 'set_nivel_presupuestos') return;
+  if(['basico','medio','avanzado'].includes(e.data.nivel)){
+    EJ_NIVEL = e.data.nivel;
+  }
+});
 </script>
 </body>
 </html>
@@ -18738,6 +19018,16 @@ function corregirEjInv(){
     '<button class="btn-nuevo" style="margin-left:8px;background:var(--surface2);color:var(--navy);border:1.5px solid var(--border)" onclick="verSolucionInv()">👁 Ver solución</button>'+
   '</div>';
   resDiv.scrollIntoView({behavior:'smooth',block:'start'});
+  // Notificar a la app principal
+  try {
+    window.parent.postMessage({
+      tipo:       'ejercicio_completado',
+      simulador:  'sim-inversiones',
+      nivel:      EJ.nivel,
+      puntuacion: pct,
+      timestamp:  new Date().toISOString()
+    }, '*');
+  } catch(e){}
 }
 
 function verSolucionInv(){
@@ -19364,6 +19654,14 @@ function escH(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').repla
 // ══════════════════════════════════════════════════════
 window.addEventListener('load',function(){
   renderPanel();
+});
+
+// Escuchar nivel adaptativo de la app principal
+window.addEventListener('message', function(e){
+  if(!e.data || e.data.tipo !== 'set_nivel_inversiones') return;
+  if(['basico','medio','avanzado'].includes(e.data.nivel)){
+    EJ.nivel = e.data.nivel;
+  }
 });
 </script>
 
@@ -22516,6 +22814,16 @@ function corregirEjSeg(){
     '<button style="padding:10px 22px;background:var(--surface2);color:var(--navy);border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;margin-top:10px;margin-left:8px" onclick="verSolEjSeg()">👁 Ver solución</button>'+
   '</div>';
   if(res) res.scrollIntoView({behavior:'smooth',block:'nearest'});
+  // Notificar a la app principal
+  try {
+    window.parent.postMessage({
+      tipo:       'ejercicio_completado',
+      simulador:  'sim-seguros',
+      nivel:      EJ_NIVEL,
+      puntuacion: pct,
+      timestamp:  new Date().toISOString()
+    }, '*');
+  } catch(e){}
 }
 
 function verSolEjSeg(){
@@ -23762,6 +24070,14 @@ function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/
 function flash(msg){var e=document.getElementById('flash');e.textContent=msg;e.classList.add('show');setTimeout(function(){e.classList.remove('show');},2500);}
 
 window.addEventListener('load',function(){setModo('primas');});
+
+// Escuchar nivel adaptativo de la app principal
+window.addEventListener('message', function(e){
+  if(!e.data || e.data.tipo !== 'set_nivel_seguros') return;
+  if(['basico','medio','avanzado'].includes(e.data.nivel)){
+    EJ_NIVEL = e.data.nivel;
+  }
+});
 </script>
 </body>
 </html>
@@ -23883,6 +24199,21 @@ function actualizarUIConPerfil(perfil){
   }
 }
 
+// ── Registrar acceso del usuario ─────────────────────
+async function registrarAcceso(){
+  if(!USUARIO_ACTUAL) return;
+  try {
+    await supa.from('accesos').insert({
+      usuario_id: USUARIO_ACTUAL.id,
+      email:      USUARIO_ACTUAL.email,
+      rol:        USUARIO_ACTUAL.rol,
+      created_at: new Date().toISOString()
+    });
+  } catch(e){
+    // Si la tabla no existe aún, ignorar silenciosamente
+  }
+}
+
 // ── Registrar ejercicio completado ────────────────────
 async function registrarEjercicio(simuladorCodigo, nivel, puntuacion, datosCaso, respuestas, tiempoSeg){
   if(!USUARIO_ACTUAL) return;
@@ -23919,6 +24250,7 @@ async function initAuth(){
     if(perfil){
       mostrarApp();
       actualizarUIConPerfil(perfil);
+      registrarAcceso();
     } else {
       // Perfil no creado aún (raro, el trigger debería haberlo creado)
       setTimeout(async function(){
