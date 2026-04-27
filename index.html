@@ -258,6 +258,7 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
     <button class="nav-item" id="nav-banco" onclick="goTo('banco',this)">🗃 Banco de Preguntas</button>
     <button class="nav-item" id="nav-alumnos" onclick="goTo('alumnos',this)">👥 Mis Alumnos</button>
     <button class="nav-item" id="nav-eval" onclick="goTo('evaluacion',this)">📊 Evaluación RA/CE</button>
+    <button class="nav-item" id="nav-actividades" onclick="goTo('actividades',this)">📝 Actividades evaluables</button>
     <button class="nav-item" id="nav-materiales" onclick="goTo('materiales',this)">📁 Materiales</button>
 
     </div><!-- end sidebar-nav -->
@@ -335,6 +336,12 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
       <button class="btn btn-sm" onclick="renderAlumnos()" style="font-size:12px">↻ Actualizar</button></div>
       <div id="alumnos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:11px"></div>
     </div>
+    <div class="page" id="page-actividades">
+      <div class="ph"><div><h1 class="pt">Actividades evaluables</h1>
+        <p class="ps">Crea y gestiona actividades para tus alumnos</p></div></div>
+      <div id="actividades-cont"></div>
+    </div>
+
     <div class="page" id="page-evaluacion">
       <div class="ph"><div><h1 class="pt">Evaluación RA/CE</h1><p class="ps">Resultados de Aprendizaje y Criterios de Evaluación</p></div></div>
       <div id="eval-cont"></div>
@@ -663,7 +670,8 @@ function goTo(id, btn){
     'sim-presupuestos':function(){loadSim('sim-presupuestos');},
     'sim-inversiones':function(){loadSim('sim-inversiones');},
     'sim-aef':function(){loadSim('sim-aef');},
-    'sim-seguros':function(){loadSim('sim-seguros');}
+    'sim-seguros':function(){loadSim('sim-seguros');},
+    'actividades':function(){renderActividades();}
   };
   UNIDADES.forEach(function(u){ renders[u.id]=function(){renderUD(u);}; });
   if(renders[id]) renders[id]();
@@ -19875,6 +19883,8 @@ var INF = {nivel:'semiguiado', alumno:'', curso:'', fecha: new Date().toISOStrin
 var INF_RUB = {};
 var EJ_NIVEL = 'basico';
 var EJ_RESP = {};
+var EJ_ACTIVIDAD = null;  // actividad evaluable activa
+var EJ_ENTREGA_ID = null; // ID de entrega iniciada
 
 // ── Rangos óptimos por sector ─────────────────────────
 var RANGOS = {
@@ -20882,6 +20892,7 @@ function corregirEjAEF(){
       puntuacion:  pct2,
       ok:          ok,
       total:       ids.length,
+      entregaId:   EJ_ENTREGA_ID && EJ_ENTREGA_ID !== 'pendiente' ? EJ_ENTREGA_ID : null,
       caso:        EJ_CASOS ? EJ_CASOS[0] : null,
       timestamp:   new Date().toISOString()
     }, '*');
@@ -21144,16 +21155,51 @@ function flash(msg){var e=document.getElementById('flash');e.textContent=msg;e.c
 
 window.addEventListener('load',function(){
   setModo('datos');
+  // Solicitar info de actividad evaluable a la app
+  setTimeout(function(){
+    window.parent.postMessage({tipo:'check_actividad', simulador:'sim-aef'}, '*');
+  }, 500);
 });
 
-// Escuchar mensajes de la app principal (nivel adaptativo)
+// Escuchar mensajes de la app principal
 window.addEventListener('message', function(e){
-  if(!e.data || e.data.tipo !== 'set_nivel_aef') return;
-  if(['basico','medio','avanzado'].includes(e.data.nivel)){
-    EJ_NIVEL = e.data.nivel;
-    console.log('Nivel AEF recibido de la app:', EJ_NIVEL);
+  if(!e.data) return;
+  // Nivel adaptativo
+  if(e.data.tipo === 'set_nivel_aef'){
+    if(['basico','medio','avanzado'].includes(e.data.nivel)){
+      EJ_NIVEL = e.data.nivel;
+    }
+  }
+  // Info actividad evaluable
+  if(e.data.tipo === 'actividad_info_aef'){
+    EJ_ACTIVIDAD = e.data.actividad || null;
+    EJ_ENTREGA_ID = e.data.entregaId || null;
+    var tab = document.getElementById('mt-ejercicio');
+    if(tab){
+      tab.innerHTML = EJ_ACTIVIDAD
+        ? '🎓 Ejercicio <span style="background:#dc2626;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;margin-left:4px">EVAL</span>'
+        : '🎓 Ejercicio';
+    }
+  }
+  // Entrega confirmada
+  if(e.data.tipo === 'entrega_iniciada_aef'){
+    EJ_ENTREGA_ID = e.data.entregaId;
   }
 });
+
+function iniciarEjercicioEvaluable(){
+  if(!EJ_ACTIVIDAD) return;
+  window.parent.postMessage({
+    tipo:        'iniciar_entrega_evaluable',
+    simulador:   'sim-aef',
+    actividadId: EJ_ACTIVIDAD.id,
+    nivel:       EJ_NIVEL,
+    datosCaso:   {}
+  }, '*');
+  EJ_ENTREGA_ID = 'pendiente';
+  // Ir al modo ejercicio si no estamos ya
+  if(MODO !== 'ejercicio') setModo('ejercicio');
+}
 </script>
 </body>
 </html>
@@ -24176,7 +24222,7 @@ function actualizarUIConPerfil(perfil){
     // Ocultar controles de profesor
     var secProf = document.getElementById('sec-prof');
     if(secProf) secProf.style.display = 'none';
-    var profBtns = ['nav-banco','nav-alumnos','nav-eval','nav-materiales','nav-nuevo-bloque'];
+    var profBtns = ['nav-banco','nav-alumnos','nav-eval','nav-actividades','nav-materiales','nav-nuevo-bloque'];
     profBtns.forEach(function(id){
       var el = document.getElementById(id);
       if(el) el.style.display = 'none';
@@ -24287,7 +24333,41 @@ async function initAuth(){
 
 // ── Receptor de mensajes de simuladores ─────────────
 window.addEventListener('message', async function(e){
-  if(!e.data || e.data.tipo !== 'ejercicio_completado') return;
+  if(!e.data) return;
+  var msg = e.data;
+
+  // ── Alumno solicita info de actividad evaluable ──
+  if(msg.tipo === 'check_actividad' && USUARIO_ACTUAL){
+    var info = await comprobarActividadActiva(msg.simulador);
+    var iframeEl = document.getElementById(msg.simulador.replace('sim-','')+'-root');
+    if(!iframeEl) iframeEl = document.getElementById(msg.simulador+'-root');
+    var ifr = iframeEl ? iframeEl.querySelector('iframe') : null;
+    if(ifr && ifr.contentWindow){
+      ifr.contentWindow.postMessage({
+        tipo:      'actividad_info_'+msg.simulador.replace('sim-',''),
+        actividad: info ? info.actividad : null,
+        entregaId: info && info.entrega ? info.entrega.id : null,
+      }, '*');
+    }
+    return;
+  }
+
+  // ── Alumno inicia entrega evaluable ─────────────
+  if(msg.tipo === 'iniciar_entrega_evaluable' && USUARIO_ACTUAL){
+    var entrega = await iniciarEntrega(msg.actividadId, msg.datosCaso || {});
+    var iframeEl2 = document.getElementById(msg.simulador+'-root');
+    var ifr2 = iframeEl2 ? iframeEl2.querySelector('iframe') : null;
+    if(ifr2 && ifr2.contentWindow && entrega){
+      ifr2.contentWindow.postMessage({
+        tipo:      'entrega_iniciada_'+msg.simulador.replace('sim-',''),
+        entregaId: entrega.id,
+      }, '*');
+    }
+    return;
+  }
+
+  // ── Ejercicio completado ─────────────────────────
+  if(msg.tipo !== 'ejercicio_completado') return;
   if(!USUARIO_ACTUAL) return;
 
   var msg = e.data;
@@ -24303,7 +24383,22 @@ window.addEventListener('message', async function(e){
     0
   );
 
-  // 2. Lógica de nivel adaptativo
+  // 2. Si hay entrega evaluable activa, completarla
+  if(msg.entregaId && msg.entregaId !== 'pendiente'){
+    await completarEntrega(
+      null, // actividadId no necesario, usamos entregaId directo
+      msg.respuestas || {},
+      msg.puntuacion
+    );
+    // Actualizar por entregaId directamente
+    await supa.from('entregas').update({
+      respuestas:           msg.respuestas || {},
+      puntuacion_automatica: msg.puntuacion,
+      entregada_at:         new Date().toISOString(),
+    }).eq('id', msg.entregaId).eq('alumno_id', USUARIO_ACTUAL.id);
+  }
+
+  // 3. Lógica de nivel adaptativo
   await calcularNivelAdaptativo(msg.simulador);
 });
 
@@ -24373,6 +24468,337 @@ function mostrarNotificacionNivel(nuevoNivel, media){
     '<div style="margin-top:6px">Nuevo nivel: <strong>'+labels[nuevoNivel]+'</strong></div>';
   document.body.appendChild(msg);
   setTimeout(function(){ msg.remove(); }, 5000);
+}
+
+
+// ══════════════════════════════════════════════════════
+//  ACTIVIDADES EVALUABLES
+// ══════════════════════════════════════════════════════
+
+var SIMS_INFO = {
+  'sim-prestamos':   {nombre:'Préstamos e Hipotecas',   bloque:'B2', ra:'RA2'},
+  'sim-pb':          {nombre:'Productos Bancarios',      bloque:'B2', ra:'RA2'},
+  'sim-presupuestos':{nombre:'Presupuestos',             bloque:'B2', ra:'RA2'},
+  'sim-inversiones': {nombre:'Inversiones',              bloque:'B3', ra:'RA3'},
+  'sim-aef':         {nombre:'Estados Financieros',      bloque:'B1', ra:'RA1'},
+  'sim-seguros':     {nombre:'Seguros',                  bloque:'B4', ra:'RA4'},
+};
+
+var GRUPO_ID_ACTUAL = 'c2f27bab-a1a5-4e92-aed9-536b4f39fb4a';
+
+// ── Panel docente: gestión de actividades ─────────────
+async function renderActividades(){
+  var cont = document.getElementById('actividades-cont');
+  if(!cont) return;
+
+  if(!USUARIO_ACTUAL || USUARIO_ACTUAL.rol !== 'docente'){
+    cont.innerHTML = '<div class="card"><div class="card-body" style="text-align:center;color:var(--muted);padding:2rem">Solo el docente puede gestionar actividades evaluables.</div></div>';
+    return;
+  }
+
+  cont.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);gap:10px">'+
+    '<div style="width:20px;height:20px;border:2px solid var(--border-md);border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite"></div>'+
+    'Cargando actividades…</div>';
+
+  // Cargar actividades existentes y simuladores
+  var [{data:acts},{data:sims},{data:entregas}] = await Promise.all([
+    supa.from('actividades').select('*').eq('docente_id', USUARIO_ACTUAL.id).order('created_at', {ascending:false}),
+    supa.from('simuladores').select('*'),
+    supa.from('entregas').select('actividad_id, alumno_id, puntuacion_automatica, puntuacion_docente, calificada_at'),
+  ]);
+
+  var simMap = {};
+  (sims||[]).forEach(function(s){ simMap[s.id] = s; });
+
+  var html = '';
+
+  // ── Formulario nueva actividad ────────────────────
+  html += '<div class="card" style="margin-bottom:1.25rem"><div class="card-header">'+
+    '<div class="card-title">➕ Nueva actividad evaluable</div></div>'+
+    '<div class="card-body">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'+
+      '<div class="poliza-campo">'+
+        '<div class="poliza-campo-label">Simulador</div>'+
+        '<select id="act-sim" class="poliza-select">'+
+          Object.keys(SIMS_INFO).map(function(k){
+            return '<option value="'+k+'">'+SIMS_INFO[k].nombre+' ('+SIMS_INFO[k].bloque+' · '+SIMS_INFO[k].ra+')</option>';
+          }).join('')+
+        '</select>'+
+      '</div>'+
+      '<div class="poliza-campo">'+
+        '<div class="poliza-campo-label">Nivel de dificultad</div>'+
+        '<select id="act-nivel" class="poliza-select">'+
+          '<option value="basico">⭐ Básico</option>'+
+          '<option value="medio" selected>⭐⭐ Medio</option>'+
+          '<option value="avanzado">⭐⭐⭐ Avanzado</option>'+
+        '</select>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">'+
+      '<div class="poliza-campo">'+
+        '<div class="poliza-campo-label">Título</div>'+
+        '<input id="act-titulo" class="poliza-input" type="text" placeholder="Ej: Actividad T1 — Préstamos">'+
+      '</div>'+
+      '<div class="poliza-campo">'+
+        '<div class="poliza-campo-label">Fecha límite</div>'+
+        '<input id="act-fecha" class="poliza-input" type="datetime-local">'+
+      '</div>'+
+      '<div class="poliza-campo">'+
+        '<div class="poliza-campo-label">Peso cálculo / interpretación / teoría (%)</div>'+
+        '<div style="display:flex;gap:6px">'+
+          '<input id="act-p-calc" class="poliza-input" type="number" value="60" min="0" max="100" style="width:60px;text-align:center">'+
+          '<input id="act-p-int"  class="poliza-input" type="number" value="30" min="0" max="100" style="width:60px;text-align:center">'+
+          '<input id="act-p-teo"  class="poliza-input" type="number" value="10" min="0" max="100" style="width:60px;text-align:center">'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<button class="btn-calc" onclick="crearActividad()" style="padding:10px 28px;font-size:14px">Crear actividad</button>'+
+  '</div></div>';
+
+  // ── Lista de actividades ───────────────────────────
+  if(!acts || acts.length === 0){
+    html += '<div class="card"><div class="card-body" style="text-align:center;color:var(--muted);padding:2rem">'+
+      '<div style="font-size:2rem;margin-bottom:8px">📝</div>'+
+      'No hay actividades creadas todavía. Crea la primera arriba.</div></div>';
+  } else {
+    html += '<div class="card"><div class="card-header"><div class="card-title">📋 Actividades creadas</div></div>'+
+      '<div class="card-body" style="padding:0"><table class="dt" style="width:100%">'+
+      '<thead><tr>'+
+        '<th style="text-align:left;padding:10px 14px">Actividad</th>'+
+        '<th>Simulador</th><th>Nivel</th><th>Fecha límite</th>'+
+        '<th>Entregas</th><th>Estado</th><th></th>'+
+      '</tr></thead><tbody>';
+
+    acts.forEach(function(act){
+      var sim = simMap[act.simulador_id] || {};
+      var entregasAct = (entregas||[]).filter(function(e){return e.actividad_id===act.id;});
+      var ahora = new Date();
+      var limite = act.fecha_limite ? new Date(act.fecha_limite) : null;
+      var activa = act.activa && (!limite || limite > ahora);
+      var estadoLabel = !act.activa ? '⏸ Pausada' : (!limite||limite>ahora) ? '✅ Activa' : '🔒 Cerrada';
+      var estadoCol = !act.activa?'var(--muted)':(!limite||limite>ahora)?'var(--green)':'var(--red)';
+      var nivelLabel = {basico:'⭐ Básico',medio:'⭐⭐ Medio',avanzado:'⭐⭐⭐ Avanzado'}[act.nivel]||act.nivel;
+
+      html += '<tr>'+
+        '<td style="padding:10px 14px"><div style="font-weight:600;font-size:13px">'+act.titulo+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+act.peso_calculo+'% cálc · '+act.peso_interpretacion+'% interp · '+act.peso_teoria+'% teoría</div></td>'+
+        '<td style="text-align:center;font-size:12px">'+( sim.nombre||'—')+'<br><span class="badge b-blue" style="font-size:10px">'+(sim.bloque||'')+'</span></td>'+
+        '<td style="text-align:center;font-size:12px">'+nivelLabel+'</td>'+
+        '<td style="text-align:center;font-size:12px;color:var(--muted)">'+(limite?limite.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'Sin límite')+'</td>'+
+        '<td style="text-align:center;font-weight:700;color:var(--navy)">'+entregasAct.length+'</td>'+
+        '<td style="text-align:center"><span style="font-size:12px;font-weight:700;color:'+estadoCol+'">'+estadoLabel+'</span></td>'+
+        '<td style="text-align:center;white-space:nowrap">'+
+          '<button class="btn-sm" onclick="verEntregas(\"'+act.id+'\")\" style="font-size:11px;margin-right:4px">Ver entregas</button>'+
+          '<button class="btn-sm" onclick="toggleActividad(\"'+act.id+'\",'+act.activa+')" style="font-size:11px;color:'+(act.activa?'var(--red)':'var(--green)')+'">'+
+            (act.activa?'⏸ Pausar':'▶ Activar')+'</button>'+
+        '</td>'+
+      '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  cont.innerHTML = html;
+}
+
+// ── Crear actividad ───────────────────────────────────
+async function crearActividad(){
+  var simCodigo = document.getElementById('act-sim').value;
+  var nivel     = document.getElementById('act-nivel').value;
+  var titulo    = document.getElementById('act-titulo').value.trim();
+  var fecha     = document.getElementById('act-fecha').value;
+  var pCalc     = parseInt(document.getElementById('act-p-calc').value)||60;
+  var pInt      = parseInt(document.getElementById('act-p-int').value)||30;
+  var pTeo      = parseInt(document.getElementById('act-p-teo').value)||10;
+
+  if(!titulo){ flash('Introduce un título para la actividad','#dc2626'); return; }
+  if(pCalc+pInt+pTeo !== 100){ flash('Los pesos deben sumar 100%','#dc2626'); return; }
+
+  // Obtener ID del simulador
+  var {data:sim} = await supa.from('simuladores').select('id').eq('codigo', simCodigo).single();
+  if(!sim){ flash('Simulador no encontrado','#dc2626'); return; }
+
+  var {error} = await supa.from('actividades').insert({
+    docente_id:          USUARIO_ACTUAL.id,
+    grupo_id:            GRUPO_ID_ACTUAL,
+    simulador_id:        sim.id,
+    titulo:              titulo,
+    nivel:               nivel,
+    fecha_limite:        fecha || null,
+    peso_calculo:        pCalc,
+    peso_interpretacion: pInt,
+    peso_teoria:         pTeo,
+    activa:              true,
+  });
+
+  if(error){ flash('Error al crear la actividad: '+error.message,'#dc2626'); return; }
+  flash('✅ Actividad creada correctamente','#16a34a');
+  renderActividades();
+}
+
+// ── Pausar/activar actividad ──────────────────────────
+async function toggleActividad(actId, estaActiva){
+  await supa.from('actividades').update({activa: !estaActiva}).eq('id', actId);
+  renderActividades();
+}
+
+// ── Ver entregas de una actividad ─────────────────────
+async function verEntregas(actId){
+  var cont = document.getElementById('actividades-cont');
+  if(!cont) return;
+
+  cont.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);gap:10px">'+
+    '<div style="width:20px;height:20px;border:2px solid var(--border-md);border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite"></div>'+
+    'Cargando entregas…</div>';
+
+  var [{data:act},{data:entregas},{data:perfiles}] = await Promise.all([
+    supa.from('actividades').select('*').eq('id',actId).single(),
+    supa.from('entregas').select('*').eq('actividad_id',actId).order('entregada_at',{ascending:false}),
+    supa.from('perfiles').select('id,nombre,email,avatar_url').eq('rol','alumno'),
+  ]);
+
+  var perfilMap = {};
+  (perfiles||[]).forEach(function(p){ perfilMap[p.id] = p; });
+
+  var html = '<button class="btn-sm" onclick="renderActividades()" style="margin-bottom:1rem">← Volver a actividades</button>';
+
+  // Cabecera actividad
+  html += '<div class="card" style="margin-bottom:1rem"><div class="card-body">'+
+    '<div style="font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:4px">'+act.titulo+'</div>'+
+    '<div style="font-size:12px;color:var(--muted)">Nivel: '+act.nivel+' · '+
+      'Peso: '+act.peso_calculo+'% cálculo / '+act.peso_interpretacion+'% interpretación / '+act.peso_teoria+'% teoría</div>'+
+  '</div></div>';
+
+  // Tabla de entregas
+  html += '<div class="card"><div class="card-header"><div class="card-title">📬 Entregas</div>'+
+    '<div style="font-size:12px;color:var(--muted)">'+(entregas?entregas.length:0)+' entrega'+(entregas&&entregas.length!==1?'s':'')+'</div>'+
+  '</div><div class="card-body" style="padding:0">'+
+  '<table class="dt" style="width:100%"><thead><tr>'+
+    '<th style="text-align:left;padding:10px 14px">Alumno</th>'+
+    '<th>Entregado</th><th>Puntuación auto.</th><th>Nota docente</th><th>Comentario</th><th></th>'+
+  '</tr></thead><tbody>';
+
+  if(!entregas || entregas.length === 0){
+    html += '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Ningún alumno ha entregado todavía.</td></tr>';
+  } else {
+    entregas.forEach(function(ent){
+      var p = perfilMap[ent.alumno_id] || {nombre:'Alumno', email:''};
+      var avatarHtml = p.avatar_url
+        ? '<img src="'+p.avatar_url+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover">'
+        : '<div style="width:28px;height:28px;border-radius:50%;background:var(--navy);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+(p.nombre[0]||'?')+'</div>';
+      var pAuto = ent.puntuacion_automatica;
+      var pDoc  = ent.puntuacion_docente;
+      var autoCol = pAuto===null?'var(--muted)':pAuto>=70?'var(--green)':pAuto>=50?'var(--amber)':'var(--red)';
+
+      html += '<tr>'+
+        '<td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:8px">'+avatarHtml+
+          '<div><div style="font-size:13px;font-weight:600">'+p.nombre+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+p.email+'</div></div></div></td>'+
+        '<td style="text-align:center;font-size:12px;color:var(--muted)">'+
+          (ent.entregada_at?new Date(ent.entregada_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—')+'</td>'+
+        '<td style="text-align:center;font-weight:700;color:'+autoCol+'">'+(pAuto!==null?pAuto+'%':'—')+'</td>'+
+        '<td style="text-align:center">'+
+          '<input type="number" min="0" max="10" step="0.1" placeholder="—" value="'+(pDoc||'')+'" '+
+          'id="nota-'+ent.id+'" style="width:60px;text-align:center;padding:4px;border:1px solid var(--border-md);border-radius:6px;font-size:13px">'+
+        '</td>'+
+        '<td>'+
+          '<input type="text" placeholder="Comentario opcional..." value="'+(ent.comentario_docente||'')+'" '+
+          'id="com-'+ent.id+'" style="width:100%;padding:4px 8px;border:1px solid var(--border-md);border-radius:6px;font-size:12px">'+
+        '</td>'+
+        '<td style="text-align:center">'+
+          '<button class="btn-sm btn-navy" onclick="guardarNota(this)" data-id="'+ent.id+'" style="font-size:11px">💾 Guardar</button>'+
+        '</td>'+
+      '</tr>';
+    });
+  }
+
+  html += '</tbody></table></div></div>';
+  cont.innerHTML = html;
+}
+
+// ── Guardar nota docente ──────────────────────────────
+async function guardarNota(btnOrId){
+  var entregaId = typeof btnOrId === 'string' ? btnOrId : btnOrId.getAttribute('data-id');
+  var nota = parseFloat(document.getElementById('nota-'+entregaId).value);
+  var comentario = document.getElementById('com-'+entregaId).value.trim();
+
+  if(isNaN(nota)||nota<0||nota>10){ flash('La nota debe ser entre 0 y 10','#dc2626'); return; }
+
+  var {error} = await supa.from('entregas').update({
+    puntuacion_docente:  nota,
+    comentario_docente:  comentario,
+    calificada_at:       new Date().toISOString(),
+  }).eq('id', entregaId);
+
+  if(error){ flash('Error al guardar: '+error.message,'#dc2626'); return; }
+  flash('✅ Nota guardada','#16a34a');
+}
+
+// ── Comprobar si hay actividad activa para un simulador ──
+async function comprobarActividadActiva(simuladorCodigo){
+  if(!USUARIO_ACTUAL) return null;
+
+  var {data:sim} = await supa.from('simuladores').select('id').eq('codigo', simuladorCodigo).single();
+  if(!sim) return null;
+
+  var ahora = new Date().toISOString();
+  var {data:acts} = await supa.from('actividades')
+    .select('*')
+    .eq('simulador_id', sim.id)
+    .eq('activa', true)
+    .or('fecha_limite.is.null,fecha_limite.gt.'+ahora)
+    .limit(1);
+
+  if(!acts || acts.length === 0) return null;
+  var act = acts[0];
+
+  // Comprobar si el alumno ya tiene entrega (empezada o completada)
+  var {data:entrega} = await supa.from('entregas')
+    .select('*')
+    .eq('actividad_id', act.id)
+    .eq('alumno_id', USUARIO_ACTUAL.id)
+    .single();
+
+  return {actividad: act, entrega: entrega || null};
+}
+
+// ── Iniciar entrega (guarda el caso al empezar) ───────
+async function iniciarEntrega(actividadId, datosCaso){
+  if(!USUARIO_ACTUAL) return null;
+
+  // Comprobar si ya existe
+  var {data:existing} = await supa.from('entregas')
+    .select('*')
+    .eq('actividad_id', actividadId)
+    .eq('alumno_id', USUARIO_ACTUAL.id)
+    .single();
+
+  if(existing) return existing; // Ya empezada, devolver la existente
+
+  // Crear nueva entrega
+  var {data:nueva, error} = await supa.from('entregas').insert({
+    actividad_id: actividadId,
+    alumno_id:    USUARIO_ACTUAL.id,
+    datos_caso:   datosCaso || {},
+    respuestas:   {},
+  }).select().single();
+
+  if(error){ console.error('Error iniciando entrega:', error); return null; }
+  return nueva;
+}
+
+// ── Completar entrega ─────────────────────────────────
+async function completarEntrega(actividadId, respuestas, puntuacion){
+  if(!USUARIO_ACTUAL) return;
+
+  var {error} = await supa.from('entregas').update({
+    respuestas:           respuestas || {},
+    puntuacion_automatica: puntuacion,
+    entregada_at:         new Date().toISOString(),
+  }).eq('actividad_id', actividadId)
+    .eq('alumno_id', USUARIO_ACTUAL.id);
+
+  if(error){ console.error('Error completando entrega:', error); return; }
+  flash('✅ Actividad evaluable entregada correctamente','#16a34a');
 }
 
 // Arrancar autenticación cuando la página cargue
