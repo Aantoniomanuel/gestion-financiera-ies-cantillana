@@ -10828,7 +10828,7 @@ function renderCalcFinanciera(root){
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador de Préstamos e Hipotecas · Gestión Financiera</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">__SCRIPTCLOSE__
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -13390,7 +13390,7 @@ function flash(msg){
 window.addEventListener('load', function(){
   calcular();
 });
-</script>
+__SCRIPTCLOSE__
 
 <!-- FAB Informe -->
 <div class="inf-fab" id="inf-fab" style="display:none">
@@ -13431,7 +13431,7 @@ window.addEventListener('load', function(){
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador de Productos Bancarios · Gestión Financiera</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">__SCRIPTCLOSE__
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -15640,7 +15640,7 @@ function esc(s){if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&
 function flash(msg){var el=document.getElementById('flash');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
 
 window.addEventListener('load',function(){ renderPanel(); });
-</script>
+__SCRIPTCLOSE__
 </body>
 </html>
 
@@ -15654,7 +15654,7 @@ window.addEventListener('load',function(){ renderPanel(); });
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador de Presupuestos · Gestión Financiera</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">__SCRIPTCLOSE__
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -17246,7 +17246,7 @@ function exportarExcelPres(){
 function flash(msg){var el=document.getElementById('flash');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2500);}
 
 window.addEventListener('load',function(){setModo('constructor');});
-</script>
+__SCRIPTCLOSE__
 </body>
 </html>
 
@@ -17260,7 +17260,7 @@ window.addEventListener('load',function(){setModo('constructor');});
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador de Inversiones · Gestión Financiera</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">__SCRIPTCLOSE__
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -19538,7 +19538,7 @@ function escH(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').repla
 window.addEventListener('load',function(){
   renderPanel();
 });
-</script>
+__SCRIPTCLOSE__
 
 <!-- FAB Informe -->
 <div class="inf-fab" id="inv-fab" style="display:none">
@@ -20947,7 +20947,7 @@ function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/
 function flash(msg){var e=document.getElementById('flash');e.textContent=msg;e.classList.add('show');setTimeout(function(){e.classList.remove('show');},2500);}
 
 window.addEventListener('load',function(){setModo('datos');});
-</script>
+__SCRIPTCLOSE__
 </body>
 </html>
 
@@ -23791,7 +23791,7 @@ function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/
 function flash(msg){var e=document.getElementById('flash');e.textContent=msg;e.classList.add('show');setTimeout(function(){e.classList.remove('show');},2500);}
 
 window.addEventListener('load',function(){setModo('primas');});
-</script>
+__SCRIPTCLOSE__
 </body>
 </html>
 
@@ -23828,7 +23828,8 @@ function loadSim(id){
   setTimeout(function(){
     var tpl=document.getElementById('tpl-'+id);
     if(!tpl){root.innerHTML='<div style="padding:2rem;color:red">Simulador no encontrado.</div>';return;}
-    var blob=new Blob([tpl.innerHTML],{type:'text/html;charset=utf-8'});
+    var html=tpl.innerHTML.replace(/__SCRIPTCLOSE__/g,'</scr'+'ipt>');
+    var blob=new Blob([html],{type:'text/html;charset=utf-8'});
     var url=URL.createObjectURL(blob);
     var ifr=document.createElement('iframe');
     ifr.src=url;
