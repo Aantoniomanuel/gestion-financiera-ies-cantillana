@@ -10816,6 +10816,519 @@ function renderCalcFinanciera(root){
 }
 </script>
 
+
+
+<script>
+console.log("SUPABASE BLOCK STARTING");
+
+// ══════════════════════════════════════════════════════
+//  SUPABASE + SISTEMA COMPLETO
+// ══════════════════════════════════════════════════════
+const SUPA_URL  = 'https://aqeahkwedkjwdvtpfaqm.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxZWFoa3dlZGtqd2R2dHBmYXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTU3NDIsImV4cCI6MjA5MjQ3MTc0Mn0.TU-awshpvPml6QX8jM8lw_BBXWiZM8V6olRPVaIH8Gg';
+const supa = supabase.createClient(SUPA_URL, SUPA_ANON);
+
+var USUARIO_ACTUAL = null;
+var GRUPO_ID_ACTUAL = 'c2f27bab-a1a5-4e92-aed9-536b4f39fb4a';
+
+var SIMS_INFO = {
+  'sim-prestamos':    {nombre:'Préstamos e Hipotecas',  bloque:'B2', ra:'RA2'},
+  'sim-pb':           {nombre:'Productos Bancarios',    bloque:'B2', ra:'RA2'},
+  'sim-presupuestos': {nombre:'Presupuestos',           bloque:'B2', ra:'RA2'},
+  'sim-inversiones':  {nombre:'Inversiones',            bloque:'B3', ra:'RA3'},
+  'sim-aef':          {nombre:'Estados Financieros',    bloque:'B1', ra:'RA1'},
+  'sim-seguros':      {nombre:'Seguros',                bloque:'B4', ra:'RA4'},
+};
+
+// ── Cargador de simuladores ───────────────────────────
+function loadSim(id){
+  var root=document.getElementById(id+'-root');
+  if(!root)return;
+  if(root.querySelector('iframe'))return;
+  root.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:300px;gap:12px;color:#6b6560;font-size:13px">'+
+    '<div style="width:22px;height:22px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>'+
+    'Cargando simulador\u2026</div>';
+  setTimeout(function(){
+    var tpl=document.getElementById('tpl-'+id);
+    if(!tpl){root.innerHTML='<div style="padding:2rem;color:red">Simulador no encontrado.</div>';return;}
+    var html=tpl.innerHTML.replace(/__SCRIPTCLOSE__/g,'</scr'+'ipt>');
+    var blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var ifr=document.createElement('iframe');
+    ifr.src=url;
+    ifr.style.cssText='width:100%;height:calc(100vh - 58px);border:none;display:block';
+    ifr.onload=function(){URL.revokeObjectURL(url);};
+    root.innerHTML='';
+    root.appendChild(ifr);
+    // Notify simulator of active activity
+    setTimeout(function(){
+      ifr.contentWindow.postMessage({tipo:'check_actividad', simulador:id},'*');
+    },800);
+  },80);
+}
+
+// ── Auth ──────────────────────────────────────────────
+async function loginConGoogle(){
+  var btn=document.getElementById('btn-google-login');
+  if(btn){btn.disabled=true;btn.textContent='Conectando...';}
+  var {error}=await supa.auth.signInWithOAuth({
+    provider:'google',
+    options:{redirectTo:window.location.href, queryParams:{hd:'g.educaand.es'}}
+  });
+  if(error){
+    var e=document.getElementById('login-error');
+    if(e){e.style.display='block';e.textContent='Error: '+error.message;}
+    if(btn){btn.disabled=false;btn.textContent='Entrar con Google';}
+  }
+}
+
+async function logout(){
+  await supa.auth.signOut();
+  USUARIO_ACTUAL=null;
+  mostrarLogin();
+}
+
+function mostrarLogin(){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app-shell').style.display='none';
+}
+function mostrarApp(){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-shell').style.display='';
+}
+function mostrarCargando(){
+  document.getElementById('loading-screen').style.display='flex';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-shell').style.display='none';
+}
+
+async function cargarPerfil(uid){
+  var {data}=await supa.from('perfiles').select('*').eq('id',uid).single();
+  return data;
+}
+
+function actualizarUIConPerfil(perfil){
+  USUARIO_ACTUAL=perfil;
+  requestAnimationFrame(function(){
+    setTimeout(function(){
+      var uName=document.getElementById('u-name');
+      var uRole=document.getElementById('u-role');
+      var uAvatar=document.getElementById('u-avatar');
+      if(uName) uName.textContent=perfil.nombre||perfil.email.split('@')[0];
+      if(uRole) uRole.textContent=perfil.rol==='docente'?'Docente · Gestión Financiera':'Alumno · Gestión Financiera';
+      if(uAvatar&&perfil.avatar_url&&!uAvatar.querySelector('img'))
+        uAvatar.innerHTML='<img src="'+perfil.avatar_url+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
+      // Add logout button
+      var sf=document.querySelector('.s-footer');
+      if(sf&&!document.getElementById('btn-logout')){
+        var b=document.createElement('button');
+        b.id='btn-logout';b.textContent='\u23FB Cerrar sesión';
+        b.style.cssText='width:calc(100% - 1rem);margin:6px 8px 4px;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;text-align:left;font-family:inherit';
+        b.addEventListener('click',logout);
+        sf.appendChild(b);
+      }
+      // Hide prof items for alumno
+      if(perfil.rol==='alumno'){
+        var hide=['sec-prof','nav-nuevo-bloque','nav-banco','nav-alumnos','nav-eval','nav-actividades','nav-materiales','btn-add-evento'];
+        hide.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+      }
+    },50);
+  });
+}
+
+async function registrarAcceso(){
+  if(!USUARIO_ACTUAL)return;
+  try{await supa.from('accesos').insert({usuario_id:USUARIO_ACTUAL.id,email:USUARIO_ACTUAL.email,rol:USUARIO_ACTUAL.rol});}catch(e){}
+}
+
+async function registrarEjercicio(simCod,nivel,punt,datos,resp,tiempo){
+  if(!USUARIO_ACTUAL)return;
+  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
+  if(!sim)return;
+  await supa.from('ejercicios_realizados').insert({
+    alumno_id:USUARIO_ACTUAL.id,simulador_id:sim.id,nivel,puntuacion:punt,
+    datos_caso:datos||{},respuestas:resp||{},tiempo_segundos:tiempo||0,completado:true
+  });
+}
+
+async function calcularNivelAdaptativo(simCod){
+  if(!USUARIO_ACTUAL)return;
+  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
+  if(!sim)return;
+  var {data:ult}=await supa.from('ejercicios_realizados').select('nivel,puntuacion')
+    .eq('alumno_id',USUARIO_ACTUAL.id).eq('simulador_id',sim.id).eq('completado',true)
+    .order('created_at',{ascending:false}).limit(3);
+  if(!ult||ult.length<3)return;
+  var media=ult.reduce(function(s,e){return s+(e.puntuacion||0);},0)/ult.length;
+  var niv=ult[0].nivel;
+  var nivs=['basico','medio','avanzado'];
+  var idx=nivs.indexOf(niv);
+  var nuevoNiv=niv;
+  if(media>=80&&idx<2) nuevoNiv=nivs[idx+1];
+  else if(media<50&&idx>0) nuevoNiv=nivs[idx-1];
+  if(nuevoNiv!==niv){
+    var root=document.getElementById(simCod+'-root');
+    if(root){var ifr=root.querySelector('iframe');if(ifr&&ifr.contentWindow)
+      ifr.contentWindow.postMessage({tipo:'set_nivel_'+simCod.replace('sim-',''),nivel:nuevoNiv},'*');}
+    mostrarNotificacionNivel(nuevoNiv,media);
+  }
+}
+
+function mostrarNotificacionNivel(niv,media){
+  var labels={basico:'Básico',medio:'Medio',avanzado:'Avanzado'};
+  var msg=document.createElement('div');
+  msg.style.cssText='position:fixed;bottom:80px;right:24px;background:#1a2744;color:#fff;padding:14px 18px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);max-width:280px;border-left:3px solid #c9a84c';
+  msg.innerHTML='<div style="font-weight:700;margin-bottom:4px">\uD83C\uDFAF Nivel actualizado</div>'+
+    '<div style="opacity:.8">Media: <strong>'+media.toFixed(0)+'%</strong></div>'+
+    '<div style="margin-top:6px">Nuevo nivel: <strong>'+labels[niv]+'</strong></div>';
+  document.body.appendChild(msg);
+  setTimeout(function(){msg.remove();},5000);
+}
+
+// ── Actividades evaluables ────────────────────────────
+async function comprobarActividadActiva(simCod){
+  if(!USUARIO_ACTUAL)return null;
+  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
+  if(!sim)return null;
+  var ahora=new Date().toISOString();
+  var {data:acts}=await supa.from('actividades').select('*').eq('simulador_id',sim.id).eq('activa',true)
+    .or('fecha_limite.is.null,fecha_limite.gt.'+ahora).limit(1);
+  if(!acts||!acts.length)return null;
+  var act=acts[0];
+  var {data:entrega}=await supa.from('entregas').select('*')
+    .eq('actividad_id',act.id).eq('alumno_id',USUARIO_ACTUAL.id).maybeSingle();
+  return {actividad:act,entrega:entrega||null};
+}
+
+async function iniciarEntrega(actId,datos){
+  if(!USUARIO_ACTUAL)return null;
+  var {data:ex}=await supa.from('entregas').select('*').eq('actividad_id',actId).eq('alumno_id',USUARIO_ACTUAL.id).maybeSingle();
+  if(ex)return ex;
+  var {data:nueva}=await supa.from('entregas').insert({actividad_id:actId,alumno_id:USUARIO_ACTUAL.id,datos_caso:datos||{},respuestas:{}}).select().single();
+  return nueva;
+}
+
+// ── Receptor de mensajes de simuladores ──────────────
+window.addEventListener('message',async function(e){
+  if(!e.data)return;
+  var msg=e.data;
+
+  if(msg.tipo==='check_actividad'&&USUARIO_ACTUAL){
+    var info=await comprobarActividadActiva(msg.simulador);
+    var root=document.getElementById(msg.simulador+'-root');
+    var ifr=root?root.querySelector('iframe'):null;
+    if(ifr&&ifr.contentWindow){
+      ifr.contentWindow.postMessage({
+        tipo:'actividad_info_'+msg.simulador.replace('sim-',''),
+        actividad:info?info.actividad:null,
+        entregaId:info&&info.entrega?info.entrega.id:null
+      },'*');
+    }
+    return;
+  }
+
+  if(msg.tipo==='iniciar_entrega_evaluable'&&USUARIO_ACTUAL){
+    var ent=await iniciarEntrega(msg.actividadId,msg.datosCaso||{});
+    var root2=document.getElementById(msg.simulador+'-root');
+    var ifr2=root2?root2.querySelector('iframe'):null;
+    if(ifr2&&ifr2.contentWindow&&ent)
+      ifr2.contentWindow.postMessage({tipo:'entrega_iniciada_'+msg.simulador.replace('sim-',''),entregaId:ent.id},'*');
+    return;
+  }
+
+  if(msg.tipo==='ejercicio_completado'&&USUARIO_ACTUAL){
+    await registrarEjercicio(msg.simulador,msg.nivel,msg.puntuacion,msg.caso||{},{},0);
+    if(msg.entregaId&&msg.entregaId!=='pendiente'){
+      await supa.from('entregas').update({
+        respuestas:{},puntuacion_automatica:msg.puntuacion,entregada_at:new Date().toISOString()
+      }).eq('id',msg.entregaId).eq('alumno_id',USUARIO_ACTUAL.id);
+    }
+    await calcularNivelAdaptativo(msg.simulador);
+  }
+});
+
+// ── Panel alumnos ─────────────────────────────────────
+function renderAlumnos(){
+  var grid=document.getElementById('alumnos-grid');
+  if(!grid)return;
+  grid.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
+  if(!USUARIO_ACTUAL||USUARIO_ACTUAL.rol!=='docente'){
+    grid.innerHTML='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem">Solo el docente puede ver esta sección.</div></div>';
+    return;
+  }
+  cargarPanelAlumnos(grid);
+}
+
+async function cargarPanelAlumnos(grid){
+  try{
+    var [{data:perfs},{data:ejercicios},{data:accesos},{data:sims}]=await Promise.all([
+      supa.from('perfiles').select('*').eq('rol','alumno').order('nombre'),
+      supa.from('ejercicios_realizados').select('alumno_id,simulador_id,nivel,puntuacion,created_at').eq('completado',true),
+      supa.from('accesos').select('usuario_id,created_at').order('created_at',{ascending:false}),
+      supa.from('simuladores').select('id,nombre,codigo,bloque'),
+    ]);
+    var simMap={};(sims||[]).forEach(function(s){simMap[s.id]=s;});
+    var sub=document.getElementById('alumnos-sub');
+    if(sub)sub.textContent=(perfs||[]).length+' alumno'+(perfs&&perfs.length!==1?'s':'')+' registrado'+(perfs&&perfs.length!==1?'s':'');
+    if(!perfs||!perfs.length){
+      grid.innerHTML='<div class="card"><div class="card-body" style="text-align:center;padding:2rem;color:#9ca3af"><div style="font-size:2.5rem;margin-bottom:1rem">👥</div><div>Sin alumnos registrados todavía.</div></div></div>';
+      return;
+    }
+    var totalEj=(ejercicios||[]).length;
+    var mediaG=totalEj>0?Math.round((ejercicios||[]).reduce(function(s,e){return s+(e.puntuacion||0);},0)/totalEj):0;
+    var activos=new Set((ejercicios||[]).map(function(e){return e.alumno_id;})).size;
+    var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">';
+    html+=mkSC('👥',perfs.length,'Alumnos registrados','');
+    html+=mkSC('✅',activos,'Con ejercicios','pos');
+    html+=mkSC('📊',mediaG+'%','Media global',mediaG>=70?'pos':mediaG>=50?'':'neg');
+    html+='</div>';
+    html+='<div class="card"><div class="card-header"><div class="card-title">📋 Seguimiento</div></div><div class="card-body" style="padding:0"><div style="overflow-x:auto"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Alumno</th><th>Ejercicios</th><th>Media</th><th>Nivel máx.</th><th>Último acceso</th><th>Último ejercicio</th><th></th></tr></thead><tbody>';
+    perfs.forEach(function(p){
+      var ej=(ejercicios||[]).filter(function(e){return e.alumno_id===p.id;});
+      var ac=(accesos||[]).filter(function(a){return a.usuario_id===p.id;});
+      var n=ej.length;
+      var med=n>0?Math.round(ej.reduce(function(s,e){return s+(e.puntuacion||0);},0)/n):null;
+      var uAc=ac.length>0?new Date(ac[0].created_at):null;
+      var uEj=n>0?new Date(Math.max.apply(null,ej.map(function(e){return new Date(e.created_at);}))):null;
+      var nivMax=ej.some(function(e){return e.nivel==='avanzado';})?'⭐⭐⭐':ej.some(function(e){return e.nivel==='medio';})?'⭐⭐':n>0?'⭐':'—';
+      var mc=med===null?'#9ca3af':med>=70?'var(--green)':med>=50?'var(--amber)':'var(--red)';
+      var av=p.avatar_url?'<img src="'+p.avatar_url+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover">':'<div style="width:32px;height:32px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">'+(p.nombre||'?')[0].toUpperCase()+'</div>';
+      html+='<tr style="cursor:pointer" onclick="verDetalleAlumno(\''+p.id+'\')"><td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:10px">'+av+'<div><div style="font-size:13px;font-weight:600">'+p.nombre+'</div><div style="font-size:11px;color:#9ca3af">'+p.email+'</div></div></div></td><td style="text-align:center;font-weight:700;color:#1a2744">'+n+'</td><td style="text-align:center"><span style="font-weight:700;color:'+mc+'">'+(med!==null?med+'%':'—')+'</span></td><td style="text-align:center;font-size:12px">'+nivMax+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(uAc?fmtF(uAc):'Nunca')+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(uEj?fmtF(uEj):'—')+'</td><td><button class="btn-sm" onclick="event.stopPropagation();verDetalleAlumno(\''+p.id+'\')" style="font-size:11px">Ver →</button></td></tr>';
+    });
+    html+='</tbody></table></div></div></div>';
+    grid.innerHTML=html;
+  }catch(err){grid.innerHTML='<p style="color:red;padding:1rem">Error: '+err.message+'</p>';}
+}
+
+function mkSC(ico,val,lbl,tipo){
+  var c=tipo==='pos'?'var(--green)':tipo==='neg'?'var(--red)':'#1a2744';
+  return '<div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.8rem;margin-bottom:4px">'+ico+'</div><div style="font-size:1.6rem;font-weight:700;color:'+c+'">'+val+'</div><div style="font-size:11px;color:#9ca3af;margin-top:2px">'+lbl+'</div></div>';
+}
+
+function fmtF(d){
+  var diff=new Date()-d,mins=Math.floor(diff/60000),h=Math.floor(diff/3600000),days=Math.floor(diff/86400000);
+  if(mins<60)return 'Hace '+mins+'min';
+  if(h<24)return 'Hace '+h+'h';
+  if(days===1)return 'Ayer';
+  if(days<7)return 'Hace '+days+'d';
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+
+async function verDetalleAlumno(aid){
+  var grid=document.getElementById('alumnos-grid');
+  if(!grid)return;
+  grid.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
+  var [{data:p},{data:ej},{data:ac},{data:sims}]=await Promise.all([
+    supa.from('perfiles').select('*').eq('id',aid).single(),
+    supa.from('ejercicios_realizados').select('*').eq('alumno_id',aid).eq('completado',true).order('created_at',{ascending:false}),
+    supa.from('accesos').select('*').eq('usuario_id',aid).order('created_at',{ascending:false}).limit(20),
+    supa.from('simuladores').select('*'),
+  ]);
+  var sm={};(sims||[]).forEach(function(s){sm[s.id]=s;});
+  var html='<button class="btn-sm" onclick="renderAlumnos()" style="margin-bottom:1rem">← Volver</button>';
+  var n=(ej||[]).length;
+  var med=n>0?Math.round((ej||[]).reduce(function(s,e){return s+(e.puntuacion||0);},0)/n):null;
+  var av=p&&p.avatar_url?'<img src="'+p.avatar_url+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover">':'<div style="width:56px;height:56px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700">'+((p&&p.nombre)||'?')[0].toUpperCase()+'</div>';
+  var mc=med===null?'#9ca3af':med>=70?'var(--green)':med>=50?'var(--amber)':'var(--red)';
+  html+='<div class="card" style="margin-bottom:1rem"><div class="card-body"><div style="display:flex;align-items:center;gap:14px;margin-bottom:1rem">'+av+'<div><div style="font-size:1.1rem;font-weight:700;color:#1a2744">'+(p?p.nombre:'')+'</div><div style="font-size:12px;color:#9ca3af">'+(p?p.email:'')+'</div></div><div style="margin-left:auto;text-align:right"><div style="font-size:2rem;font-weight:700;color:'+mc+'">'+(med!==null?med+'%':'—')+'</div><div style="font-size:11px;color:#9ca3af">Media general</div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+mkSC('📝',n,'Ejercicios','')+mkSC('🔑',(ac||[]).length,'Accesos','')+mkSC('🏆',(n>0?((ej||[]).some(function(e){return e.nivel==='avanzado';})?'Avanzado':(ej||[]).some(function(e){return e.nivel==='medio';})?'Medio':'Básico'):'—'),'Nivel máx.','')+'</div></div></div>';
+  // Ejercicios por simulador
+  var porSim={};(ej||[]).forEach(function(e){if(!porSim[e.simulador_id])porSim[e.simulador_id]=[];porSim[e.simulador_id].push(e);});
+  html+='<div class="card" style="margin-bottom:1rem"><div class="card-header"><div class="card-title">📊 Por simulador</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:8px 14px">Simulador</th><th>Ejers.</th><th>Media</th><th>Nivel</th><th>Último</th></tr></thead><tbody>';
+  if(!Object.keys(porSim).length){html+='<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:#9ca3af">Sin ejercicios.</td></tr>';}
+  else{Object.keys(porSim).forEach(function(sid){var lista=porSim[sid];var s=sm[sid]||{nombre:'—',bloque:'—'};var med2=Math.round(lista.reduce(function(a,e){return a+(e.puntuacion||0);},0)/lista.length);var mc2=med2>=70?'var(--green)':med2>=50?'var(--amber)':'var(--red)';html+='<tr><td style="padding:8px 14px;font-size:13px;font-weight:600">'+s.nombre+'</td><td style="text-align:center">'+lista.length+'</td><td style="text-align:center;font-weight:700;color:'+mc2+'">'+med2+'%</td><td style="text-align:center;font-size:12px">'+lista[0].nivel+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+fmtF(new Date(lista[0].created_at))+'</td></tr>';});}
+  html+='</tbody></table></div></div>';
+  // Accesos
+  html+='<div class="card"><div class="card-header"><div class="card-title">🔑 Accesos</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:8px 14px">Fecha y hora</th><th>Hace</th></tr></thead><tbody>';
+  if(!ac||!ac.length){html+='<tr><td colspan="2" style="text-align:center;padding:1rem;color:#9ca3af">Sin accesos.</td></tr>';}
+  else{ac.forEach(function(a){var d=new Date(a.created_at);html+='<tr><td style="padding:8px 14px;font-size:13px">'+d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+fmtF(d)+'</td></tr>';});}
+  html+='</tbody></table></div></div>';
+  grid.innerHTML=html;
+}
+
+// ── Actividades evaluables ────────────────────────────
+async function renderActividades(){
+  var cont=document.getElementById('actividades-cont');
+  if(!cont)return;
+  if(!USUARIO_ACTUAL||USUARIO_ACTUAL.rol!=='docente'){
+    cont.innerHTML='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem">Solo el docente puede gestionar actividades.</div></div>';
+    return;
+  }
+  cont.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
+  var [{data:acts},{data:sims},{data:entregas}]=await Promise.all([
+    supa.from('actividades').select('*').eq('docente_id',USUARIO_ACTUAL.id).order('created_at',{ascending:false}),
+    supa.from('simuladores').select('*'),
+    supa.from('entregas').select('actividad_id,alumno_id,puntuacion_automatica,puntuacion_docente'),
+  ]);
+  var sm={};(sims||[]).forEach(function(s){sm[s.id]=s;});
+  var html='<div class="card" style="margin-bottom:1.25rem"><div class="card-header"><div class="card-title">➕ Nueva actividad</div></div><div class="card-body">';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">';
+  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Simulador</div><select id="act-sim" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px">';
+  Object.keys(SIMS_INFO).forEach(function(k){html+='<option value="'+k+'">'+SIMS_INFO[k].nombre+'</option>';});
+  html+='</select></div>';
+  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Nivel</div><select id="act-nivel" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px"><option value="basico">⭐ Básico</option><option value="medio" selected>⭐⭐ Medio</option><option value="avanzado">⭐⭐⭐ Avanzado</option></select></div>';
+  html+='</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">';
+  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Título</div><input id="act-titulo" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" type="text" placeholder="Ej: AE1 — Préstamos"></div>';
+  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="act-fecha" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" type="datetime-local"></div>';
+  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálc/Int/Teo</div><div style="display:flex;gap:6px"><input id="act-p-calc" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="60"><input id="act-p-int" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="30"><input id="act-p-teo" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="10"></div></div>';
+  html+='</div><button class="btn-calc" onclick="crearActividad()" style="padding:10px 28px;font-size:14px">Crear actividad</button></div></div>';
+
+  if(!acts||!acts.length){
+    html+='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem"><div style="font-size:2rem;margin-bottom:8px">📝</div>No hay actividades creadas.</div></div>';
+  } else {
+    html+='<div class="card"><div class="card-header"><div class="card-title">📋 Actividades creadas</div></div><div class="card-body" style="padding:0"><div style="overflow-x:auto"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Actividad</th><th>Simulador</th><th>Nivel</th><th>Fecha límite</th><th>Entregas</th><th>Estado</th><th></th></tr></thead><tbody>';
+    acts.forEach(function(act){
+      var s=sm[act.simulador_id]||{};
+      var ea=(entregas||[]).filter(function(e){return e.actividad_id===act.id;});
+      var ahora=new Date();var lim=act.fecha_limite?new Date(act.fecha_limite):null;
+      var activa=act.activa&&(!lim||lim>ahora);
+      var slbl=!act.activa?'⏸ Pausada':(!lim||lim>ahora)?'✅ Activa':'🔒 Cerrada';
+      var sc=!act.activa?'#9ca3af':(!lim||lim>ahora)?'var(--green)':'var(--red)';
+      var nlbl={basico:'⭐ Básico',medio:'⭐⭐ Medio',avanzado:'⭐⭐⭐ Avanzado'}[act.nivel]||act.nivel;
+      var actId=act.id;
+      html+='<tr><td style="padding:10px 14px"><div style="font-weight:600;font-size:13px">'+act.titulo+'</div><div style="font-size:11px;color:#9ca3af">'+act.peso_calculo+'% calc · '+act.peso_interpretacion+'% int · '+act.peso_teoria+'% teo</div></td><td style="text-align:center;font-size:12px">'+(s.nombre||'—')+'</td><td style="text-align:center;font-size:12px">'+nlbl+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(lim?lim.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'Sin límite')+'</td><td style="text-align:center;font-weight:700;color:#1a2744">'+ea.length+'</td><td style="text-align:center"><span style="font-size:12px;font-weight:700;color:'+sc+'">'+slbl+'</span></td>';
+      html+='<td style="text-align:center;white-space:nowrap"><button class="btn-sm" data-id="'+actId+'" onclick="verEntregas(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">Ver</button><button class="btn-sm" data-id="'+actId+'" data-activa="'+act.activa+'" onclick="toggleActividad(this.getAttribute(\'data-id\'),this.getAttribute(\'data-activa\')===\'true\')" style="font-size:11px;color:'+(act.activa?'var(--red)':'var(--green)')+';margin-right:2px">'+(act.activa?'⏸':'▶')+'</button><button class="btn-sm" data-id="'+actId+'" onclick="editarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">✏️</button><button class="btn-sm" data-id="'+actId+'" onclick="eliminarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;color:var(--red)">🗑</button></td></tr>';
+    });
+    html+='</tbody></table></div></div></div>';
+  }
+  cont.innerHTML=html;
+}
+
+async function crearActividad(){
+  var simCod=document.getElementById('act-sim').value;
+  var nivel=document.getElementById('act-nivel').value;
+  var titulo=document.getElementById('act-titulo').value.trim();
+  var fecha=document.getElementById('act-fecha').value;
+  var pC=parseInt(document.getElementById('act-p-calc').value)||60;
+  var pI=parseInt(document.getElementById('act-p-int').value)||30;
+  var pT=parseInt(document.getElementById('act-p-teo').value)||10;
+  if(!titulo){flash('Introduce un título','#dc2626');return;}
+  if(pC+pI+pT!==100){flash('Los pesos deben sumar 100%','#dc2626');return;}
+  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
+  if(!sim){flash('Simulador no encontrado','#dc2626');return;}
+  var {error}=await supa.from('actividades').insert({
+    docente_id:USUARIO_ACTUAL.id,grupo_id:GRUPO_ID_ACTUAL,simulador_id:sim.id,
+    titulo,nivel,fecha_limite:fecha||null,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT,activa:true
+  });
+  if(error){flash('Error: '+error.message,'#dc2626');return;}
+  flash('✅ Actividad creada','#16a34a');
+  renderActividades();
+}
+
+async function toggleActividad(actId,estaActiva){
+  await supa.from('actividades').update({activa:!estaActiva}).eq('id',actId);
+  renderActividades();
+}
+
+async function eliminarActividad(actId){
+  if(!confirm('¿Eliminar esta actividad? Se eliminarán también todas las entregas.'))return;
+  await supa.from('actividades').delete().eq('id',actId);
+  flash('✅ Actividad eliminada','#16a34a');
+  renderActividades();
+}
+
+async function editarActividad(actId){
+  var {data:act}=await supa.from('actividades').select('*').eq('id',actId).single();
+  if(!act)return;
+  var m=document.createElement('div');
+  m.id='edit-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  var fv=act.fecha_limite?new Date(act.fecha_limite).toISOString().slice(0,16):'';
+  m.innerHTML='<div style="background:#fff;border-radius:12px;padding:1.5rem;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+    '<div style="font-size:1.1rem;font-weight:700;color:#1a2744;margin-bottom:1rem">✏️ Editar actividad</div>'+
+    '<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Título</div><input id="edit-titulo" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+act.titulo+'"></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'+
+    '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Nivel</div><select id="edit-nivel" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px"><option value="basico"'+(act.nivel==='basico'?' selected':'')+'>⭐ Básico</option><option value="medio"'+(act.nivel==='medio'?' selected':'')+'>⭐⭐ Medio</option><option value="avanzado"'+(act.nivel==='avanzado'?' selected':'')+'>⭐⭐⭐ Avanzado</option></select></div>'+
+    '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="edit-fecha" type="datetime-local" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+fv+'"></div></div>'+
+    '<div style="margin-bottom:1rem"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálculo/Interpretación/Teoría</div><div style="display:flex;gap:8px"><input id="edit-pc" type="number" value="'+act.peso_calculo+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pi" type="number" value="'+act.peso_interpretacion+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pt" type="number" value="'+act.peso_teoria+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"></div></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+    '<button class="btn-sm" onclick="document.getElementById(\'edit-modal\').remove()">Cancelar</button>'+
+    '<button class="btn-calc" data-id="'+actId+'" onclick="guardarEdicion(this.getAttribute(\'data-id\'))" style="padding:8px 20px">💾 Guardar</button>'+
+    '</div></div>';
+  document.body.appendChild(m);
+}
+
+async function guardarEdicion(actId){
+  var titulo=document.getElementById('edit-titulo').value.trim();
+  var nivel=document.getElementById('edit-nivel').value;
+  var fecha=document.getElementById('edit-fecha').value;
+  var pC=parseInt(document.getElementById('edit-pc').value)||60;
+  var pI=parseInt(document.getElementById('edit-pi').value)||30;
+  var pT=parseInt(document.getElementById('edit-pt').value)||10;
+  if(!titulo){flash('El título no puede estar vacío','#dc2626');return;}
+  if(pC+pI+pT!==100){flash('Los pesos deben sumar 100%','#dc2626');return;}
+  var {error}=await supa.from('actividades').update({titulo,nivel,fecha_limite:fecha||null,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT}).eq('id',actId);
+  if(error){flash('Error: '+error.message,'#dc2626');return;}
+  document.getElementById('edit-modal').remove();
+  flash('✅ Actividad actualizada','#16a34a');
+  renderActividades();
+}
+
+async function verEntregas(actId){
+  var cont=document.getElementById('actividades-cont');
+  if(!cont)return;
+  cont.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
+  var [{data:act},{data:ents},{data:perfs}]=await Promise.all([
+    supa.from('actividades').select('*').eq('id',actId).single(),
+    supa.from('entregas').select('*').eq('actividad_id',actId).order('entregada_at',{ascending:false}),
+    supa.from('perfiles').select('id,nombre,email,avatar_url').eq('rol','alumno'),
+  ]);
+  var pm={};(perfs||[]).forEach(function(p){pm[p.id]=p;});
+  var html='<button class="btn-sm" onclick="renderActividades()" style="margin-bottom:1rem">← Volver</button>';
+  html+='<div class="card" style="margin-bottom:1rem"><div class="card-body"><div style="font-size:1rem;font-weight:700;color:#1a2744">'+act.titulo+'</div><div style="font-size:12px;color:#9ca3af">'+act.nivel+' · '+act.peso_calculo+'% cálculo / '+act.peso_interpretacion+'% interpretación / '+act.peso_teoria+'% teoría</div></div></div>';
+  html+='<div class="card"><div class="card-header"><div class="card-title">📬 Entregas</div><div style="font-size:12px;color:#9ca3af">'+(ents?ents.length:0)+' entrega'+(ents&&ents.length!==1?'s':'')+'</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Alumno</th><th>Entregado</th><th>Puntuación auto.</th><th>Nota docente</th><th>Comentario</th><th></th></tr></thead><tbody>';
+  if(!ents||!ents.length){html+='<tr><td colspan="6" style="text-align:center;padding:2rem;color:#9ca3af">Ningún alumno ha entregado todavía.</td></tr>';}
+  else{ents.forEach(function(ent){
+    var p=pm[ent.alumno_id]||{nombre:'Alumno',email:''};
+    var av=p.avatar_url?'<img src="'+p.avatar_url+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover">':'<div style="width:28px;height:28px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+(p.nombre[0]||'?')+'</div>';
+    var pa=ent.puntuacion_automatica;
+    var mc2=pa===null?'#9ca3af':pa>=70?'var(--green)':pa>=50?'var(--amber)':'var(--red)';
+    html+='<tr><td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:8px">'+av+'<div><div style="font-size:13px;font-weight:600">'+p.nombre+'</div><div style="font-size:11px;color:#9ca3af">'+p.email+'</div></div></div></td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(ent.entregada_at?new Date(ent.entregada_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—')+'</td><td style="text-align:center;font-weight:700;color:'+mc2+'">'+(pa!==null?pa+'%':'—')+'</td>';
+    html+='<td style="text-align:center"><input type="number" min="0" max="10" step="0.1" placeholder="—" value="'+(ent.puntuacion_docente||'')+'" id="nota-'+ent.id+'" style="width:60px;text-align:center;padding:4px;border:1px solid #d1ccc6;border-radius:6px;font-size:13px"></td>';
+    html+='<td><input type="text" placeholder="Comentario..." value="'+(ent.comentario_docente||'')+'" id="com-'+ent.id+'" style="width:100%;padding:4px 8px;border:1px solid #d1ccc6;border-radius:6px;font-size:12px"></td>';
+    html+='<td style="text-align:center"><button class="btn-sm btn-navy" data-id="'+ent.id+'" onclick="guardarNota(this.getAttribute(\'data-id\'))" style="font-size:11px">💾</button></td></tr>';
+  });}
+  html+='</tbody></table></div></div>';
+  cont.innerHTML=html;
+}
+
+async function guardarNota(entId){
+  var nota=parseFloat(document.getElementById('nota-'+entId).value);
+  var com=document.getElementById('com-'+entId).value.trim();
+  if(isNaN(nota)||nota<0||nota>10){flash('Nota entre 0 y 10','#dc2626');return;}
+  var {error}=await supa.from('entregas').update({puntuacion_docente:nota,comentario_docente:com,calificada_at:new Date().toISOString()}).eq('id',entId);
+  if(error){flash('Error: '+error.message,'#dc2626');return;}
+  flash('✅ Nota guardada','#16a34a');
+}
+
+// ── initAuth ──────────────────────────────────────────
+async function initAuth(){
+  mostrarCargando();
+  var {data:{session}}=await supa.auth.getSession();
+  if(session){
+    var perfil=await cargarPerfil(session.user.id);
+    if(perfil){mostrarApp();actualizarUIConPerfil(perfil);registrarAcceso();}
+    else{setTimeout(async function(){var p=await cargarPerfil(session.user.id);if(p){mostrarApp();actualizarUIConPerfil(p);registrarAcceso();}else mostrarLogin();},1500);}
+  } else {mostrarLogin();}
+  supa.auth.onAuthStateChange(async function(event,session){
+    if(event==='SIGNED_IN'&&session){
+      mostrarCargando();
+      setTimeout(async function(){var p=await cargarPerfil(session.user.id);if(p){mostrarApp();actualizarUIConPerfil(p);registrarAcceso();}else mostrarLogin();},1000);
+    } else if(event==='SIGNED_OUT'){USUARIO_ACTUAL=null;mostrarLogin();}
+  });
+}
+
+// ── Bind button + start ───────────────────────────────
+// Direct execution - script is at end of body, DOM already ready
+(function(){
+  var btn=document.getElementById('btn-google-login');
+  if(btn)btn.addEventListener('click',loginConGoogle);
+  initAuth();
+})();
+
+</script>
+
 </div><!-- /app-shell -->
 
 
@@ -23851,517 +24364,6 @@ __SCRIPTCLOSE__
 </html>
 
 </template>
-
-<script>
-console.log("SUPABASE BLOCK STARTING");
-
-// ══════════════════════════════════════════════════════
-//  SUPABASE + SISTEMA COMPLETO
-// ══════════════════════════════════════════════════════
-const SUPA_URL  = 'https://aqeahkwedkjwdvtpfaqm.supabase.co';
-const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxZWFoa3dlZGtqd2R2dHBmYXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTU3NDIsImV4cCI6MjA5MjQ3MTc0Mn0.TU-awshpvPml6QX8jM8lw_BBXWiZM8V6olRPVaIH8Gg';
-const supa = supabase.createClient(SUPA_URL, SUPA_ANON);
-
-var USUARIO_ACTUAL = null;
-var GRUPO_ID_ACTUAL = 'c2f27bab-a1a5-4e92-aed9-536b4f39fb4a';
-
-var SIMS_INFO = {
-  'sim-prestamos':    {nombre:'Préstamos e Hipotecas',  bloque:'B2', ra:'RA2'},
-  'sim-pb':           {nombre:'Productos Bancarios',    bloque:'B2', ra:'RA2'},
-  'sim-presupuestos': {nombre:'Presupuestos',           bloque:'B2', ra:'RA2'},
-  'sim-inversiones':  {nombre:'Inversiones',            bloque:'B3', ra:'RA3'},
-  'sim-aef':          {nombre:'Estados Financieros',    bloque:'B1', ra:'RA1'},
-  'sim-seguros':      {nombre:'Seguros',                bloque:'B4', ra:'RA4'},
-};
-
-// ── Cargador de simuladores ───────────────────────────
-function loadSim(id){
-  var root=document.getElementById(id+'-root');
-  if(!root)return;
-  if(root.querySelector('iframe'))return;
-  root.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:300px;gap:12px;color:#6b6560;font-size:13px">'+
-    '<div style="width:22px;height:22px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>'+
-    'Cargando simulador\u2026</div>';
-  setTimeout(function(){
-    var tpl=document.getElementById('tpl-'+id);
-    if(!tpl){root.innerHTML='<div style="padding:2rem;color:red">Simulador no encontrado.</div>';return;}
-    var html=tpl.innerHTML.replace(/__SCRIPTCLOSE__/g,'</scr'+'ipt>');
-    var blob=new Blob([html],{type:'text/html;charset=utf-8'});
-    var url=URL.createObjectURL(blob);
-    var ifr=document.createElement('iframe');
-    ifr.src=url;
-    ifr.style.cssText='width:100%;height:calc(100vh - 58px);border:none;display:block';
-    ifr.onload=function(){URL.revokeObjectURL(url);};
-    root.innerHTML='';
-    root.appendChild(ifr);
-    // Notify simulator of active activity
-    setTimeout(function(){
-      ifr.contentWindow.postMessage({tipo:'check_actividad', simulador:id},'*');
-    },800);
-  },80);
-}
-
-// ── Auth ──────────────────────────────────────────────
-async function loginConGoogle(){
-  var btn=document.getElementById('btn-google-login');
-  if(btn){btn.disabled=true;btn.textContent='Conectando...';}
-  var {error}=await supa.auth.signInWithOAuth({
-    provider:'google',
-    options:{redirectTo:window.location.href, queryParams:{hd:'g.educaand.es'}}
-  });
-  if(error){
-    var e=document.getElementById('login-error');
-    if(e){e.style.display='block';e.textContent='Error: '+error.message;}
-    if(btn){btn.disabled=false;btn.textContent='Entrar con Google';}
-  }
-}
-
-async function logout(){
-  await supa.auth.signOut();
-  USUARIO_ACTUAL=null;
-  mostrarLogin();
-}
-
-function mostrarLogin(){
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('app-shell').style.display='none';
-}
-function mostrarApp(){
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app-shell').style.display='';
-}
-function mostrarCargando(){
-  document.getElementById('loading-screen').style.display='flex';
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app-shell').style.display='none';
-}
-
-async function cargarPerfil(uid){
-  var {data}=await supa.from('perfiles').select('*').eq('id',uid).single();
-  return data;
-}
-
-function actualizarUIConPerfil(perfil){
-  USUARIO_ACTUAL=perfil;
-  requestAnimationFrame(function(){
-    setTimeout(function(){
-      var uName=document.getElementById('u-name');
-      var uRole=document.getElementById('u-role');
-      var uAvatar=document.getElementById('u-avatar');
-      if(uName) uName.textContent=perfil.nombre||perfil.email.split('@')[0];
-      if(uRole) uRole.textContent=perfil.rol==='docente'?'Docente · Gestión Financiera':'Alumno · Gestión Financiera';
-      if(uAvatar&&perfil.avatar_url&&!uAvatar.querySelector('img'))
-        uAvatar.innerHTML='<img src="'+perfil.avatar_url+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
-      // Add logout button
-      var sf=document.querySelector('.s-footer');
-      if(sf&&!document.getElementById('btn-logout')){
-        var b=document.createElement('button');
-        b.id='btn-logout';b.textContent='\u23FB Cerrar sesión';
-        b.style.cssText='width:calc(100% - 1rem);margin:6px 8px 4px;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;text-align:left;font-family:inherit';
-        b.addEventListener('click',logout);
-        sf.appendChild(b);
-      }
-      // Hide prof items for alumno
-      if(perfil.rol==='alumno'){
-        var hide=['sec-prof','nav-nuevo-bloque','nav-banco','nav-alumnos','nav-eval','nav-actividades','nav-materiales','btn-add-evento'];
-        hide.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
-      }
-    },50);
-  });
-}
-
-async function registrarAcceso(){
-  if(!USUARIO_ACTUAL)return;
-  try{await supa.from('accesos').insert({usuario_id:USUARIO_ACTUAL.id,email:USUARIO_ACTUAL.email,rol:USUARIO_ACTUAL.rol});}catch(e){}
-}
-
-async function registrarEjercicio(simCod,nivel,punt,datos,resp,tiempo){
-  if(!USUARIO_ACTUAL)return;
-  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
-  if(!sim)return;
-  await supa.from('ejercicios_realizados').insert({
-    alumno_id:USUARIO_ACTUAL.id,simulador_id:sim.id,nivel,puntuacion:punt,
-    datos_caso:datos||{},respuestas:resp||{},tiempo_segundos:tiempo||0,completado:true
-  });
-}
-
-async function calcularNivelAdaptativo(simCod){
-  if(!USUARIO_ACTUAL)return;
-  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
-  if(!sim)return;
-  var {data:ult}=await supa.from('ejercicios_realizados').select('nivel,puntuacion')
-    .eq('alumno_id',USUARIO_ACTUAL.id).eq('simulador_id',sim.id).eq('completado',true)
-    .order('created_at',{ascending:false}).limit(3);
-  if(!ult||ult.length<3)return;
-  var media=ult.reduce(function(s,e){return s+(e.puntuacion||0);},0)/ult.length;
-  var niv=ult[0].nivel;
-  var nivs=['basico','medio','avanzado'];
-  var idx=nivs.indexOf(niv);
-  var nuevoNiv=niv;
-  if(media>=80&&idx<2) nuevoNiv=nivs[idx+1];
-  else if(media<50&&idx>0) nuevoNiv=nivs[idx-1];
-  if(nuevoNiv!==niv){
-    var root=document.getElementById(simCod+'-root');
-    if(root){var ifr=root.querySelector('iframe');if(ifr&&ifr.contentWindow)
-      ifr.contentWindow.postMessage({tipo:'set_nivel_'+simCod.replace('sim-',''),nivel:nuevoNiv},'*');}
-    mostrarNotificacionNivel(nuevoNiv,media);
-  }
-}
-
-function mostrarNotificacionNivel(niv,media){
-  var labels={basico:'Básico',medio:'Medio',avanzado:'Avanzado'};
-  var msg=document.createElement('div');
-  msg.style.cssText='position:fixed;bottom:80px;right:24px;background:#1a2744;color:#fff;padding:14px 18px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);max-width:280px;border-left:3px solid #c9a84c';
-  msg.innerHTML='<div style="font-weight:700;margin-bottom:4px">\uD83C\uDFAF Nivel actualizado</div>'+
-    '<div style="opacity:.8">Media: <strong>'+media.toFixed(0)+'%</strong></div>'+
-    '<div style="margin-top:6px">Nuevo nivel: <strong>'+labels[niv]+'</strong></div>';
-  document.body.appendChild(msg);
-  setTimeout(function(){msg.remove();},5000);
-}
-
-// ── Actividades evaluables ────────────────────────────
-async function comprobarActividadActiva(simCod){
-  if(!USUARIO_ACTUAL)return null;
-  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
-  if(!sim)return null;
-  var ahora=new Date().toISOString();
-  var {data:acts}=await supa.from('actividades').select('*').eq('simulador_id',sim.id).eq('activa',true)
-    .or('fecha_limite.is.null,fecha_limite.gt.'+ahora).limit(1);
-  if(!acts||!acts.length)return null;
-  var act=acts[0];
-  var {data:entrega}=await supa.from('entregas').select('*')
-    .eq('actividad_id',act.id).eq('alumno_id',USUARIO_ACTUAL.id).maybeSingle();
-  return {actividad:act,entrega:entrega||null};
-}
-
-async function iniciarEntrega(actId,datos){
-  if(!USUARIO_ACTUAL)return null;
-  var {data:ex}=await supa.from('entregas').select('*').eq('actividad_id',actId).eq('alumno_id',USUARIO_ACTUAL.id).maybeSingle();
-  if(ex)return ex;
-  var {data:nueva}=await supa.from('entregas').insert({actividad_id:actId,alumno_id:USUARIO_ACTUAL.id,datos_caso:datos||{},respuestas:{}}).select().single();
-  return nueva;
-}
-
-// ── Receptor de mensajes de simuladores ──────────────
-window.addEventListener('message',async function(e){
-  if(!e.data)return;
-  var msg=e.data;
-
-  if(msg.tipo==='check_actividad'&&USUARIO_ACTUAL){
-    var info=await comprobarActividadActiva(msg.simulador);
-    var root=document.getElementById(msg.simulador+'-root');
-    var ifr=root?root.querySelector('iframe'):null;
-    if(ifr&&ifr.contentWindow){
-      ifr.contentWindow.postMessage({
-        tipo:'actividad_info_'+msg.simulador.replace('sim-',''),
-        actividad:info?info.actividad:null,
-        entregaId:info&&info.entrega?info.entrega.id:null
-      },'*');
-    }
-    return;
-  }
-
-  if(msg.tipo==='iniciar_entrega_evaluable'&&USUARIO_ACTUAL){
-    var ent=await iniciarEntrega(msg.actividadId,msg.datosCaso||{});
-    var root2=document.getElementById(msg.simulador+'-root');
-    var ifr2=root2?root2.querySelector('iframe'):null;
-    if(ifr2&&ifr2.contentWindow&&ent)
-      ifr2.contentWindow.postMessage({tipo:'entrega_iniciada_'+msg.simulador.replace('sim-',''),entregaId:ent.id},'*');
-    return;
-  }
-
-  if(msg.tipo==='ejercicio_completado'&&USUARIO_ACTUAL){
-    await registrarEjercicio(msg.simulador,msg.nivel,msg.puntuacion,msg.caso||{},{},0);
-    if(msg.entregaId&&msg.entregaId!=='pendiente'){
-      await supa.from('entregas').update({
-        respuestas:{},puntuacion_automatica:msg.puntuacion,entregada_at:new Date().toISOString()
-      }).eq('id',msg.entregaId).eq('alumno_id',USUARIO_ACTUAL.id);
-    }
-    await calcularNivelAdaptativo(msg.simulador);
-  }
-});
-
-// ── Panel alumnos ─────────────────────────────────────
-function renderAlumnos(){
-  var grid=document.getElementById('alumnos-grid');
-  if(!grid)return;
-  grid.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
-  if(!USUARIO_ACTUAL||USUARIO_ACTUAL.rol!=='docente'){
-    grid.innerHTML='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem">Solo el docente puede ver esta sección.</div></div>';
-    return;
-  }
-  cargarPanelAlumnos(grid);
-}
-
-async function cargarPanelAlumnos(grid){
-  try{
-    var [{data:perfs},{data:ejercicios},{data:accesos},{data:sims}]=await Promise.all([
-      supa.from('perfiles').select('*').eq('rol','alumno').order('nombre'),
-      supa.from('ejercicios_realizados').select('alumno_id,simulador_id,nivel,puntuacion,created_at').eq('completado',true),
-      supa.from('accesos').select('usuario_id,created_at').order('created_at',{ascending:false}),
-      supa.from('simuladores').select('id,nombre,codigo,bloque'),
-    ]);
-    var simMap={};(sims||[]).forEach(function(s){simMap[s.id]=s;});
-    var sub=document.getElementById('alumnos-sub');
-    if(sub)sub.textContent=(perfs||[]).length+' alumno'+(perfs&&perfs.length!==1?'s':'')+' registrado'+(perfs&&perfs.length!==1?'s':'');
-    if(!perfs||!perfs.length){
-      grid.innerHTML='<div class="card"><div class="card-body" style="text-align:center;padding:2rem;color:#9ca3af"><div style="font-size:2.5rem;margin-bottom:1rem">👥</div><div>Sin alumnos registrados todavía.</div></div></div>';
-      return;
-    }
-    var totalEj=(ejercicios||[]).length;
-    var mediaG=totalEj>0?Math.round((ejercicios||[]).reduce(function(s,e){return s+(e.puntuacion||0);},0)/totalEj):0;
-    var activos=new Set((ejercicios||[]).map(function(e){return e.alumno_id;})).size;
-    var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">';
-    html+=mkSC('👥',perfs.length,'Alumnos registrados','');
-    html+=mkSC('✅',activos,'Con ejercicios','pos');
-    html+=mkSC('📊',mediaG+'%','Media global',mediaG>=70?'pos':mediaG>=50?'':'neg');
-    html+='</div>';
-    html+='<div class="card"><div class="card-header"><div class="card-title">📋 Seguimiento</div></div><div class="card-body" style="padding:0"><div style="overflow-x:auto"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Alumno</th><th>Ejercicios</th><th>Media</th><th>Nivel máx.</th><th>Último acceso</th><th>Último ejercicio</th><th></th></tr></thead><tbody>';
-    perfs.forEach(function(p){
-      var ej=(ejercicios||[]).filter(function(e){return e.alumno_id===p.id;});
-      var ac=(accesos||[]).filter(function(a){return a.usuario_id===p.id;});
-      var n=ej.length;
-      var med=n>0?Math.round(ej.reduce(function(s,e){return s+(e.puntuacion||0);},0)/n):null;
-      var uAc=ac.length>0?new Date(ac[0].created_at):null;
-      var uEj=n>0?new Date(Math.max.apply(null,ej.map(function(e){return new Date(e.created_at);}))):null;
-      var nivMax=ej.some(function(e){return e.nivel==='avanzado';})?'⭐⭐⭐':ej.some(function(e){return e.nivel==='medio';})?'⭐⭐':n>0?'⭐':'—';
-      var mc=med===null?'#9ca3af':med>=70?'var(--green)':med>=50?'var(--amber)':'var(--red)';
-      var av=p.avatar_url?'<img src="'+p.avatar_url+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover">':'<div style="width:32px;height:32px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">'+(p.nombre||'?')[0].toUpperCase()+'</div>';
-      html+='<tr style="cursor:pointer" onclick="verDetalleAlumno(\''+p.id+'\')"><td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:10px">'+av+'<div><div style="font-size:13px;font-weight:600">'+p.nombre+'</div><div style="font-size:11px;color:#9ca3af">'+p.email+'</div></div></div></td><td style="text-align:center;font-weight:700;color:#1a2744">'+n+'</td><td style="text-align:center"><span style="font-weight:700;color:'+mc+'">'+(med!==null?med+'%':'—')+'</span></td><td style="text-align:center;font-size:12px">'+nivMax+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(uAc?fmtF(uAc):'Nunca')+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(uEj?fmtF(uEj):'—')+'</td><td><button class="btn-sm" onclick="event.stopPropagation();verDetalleAlumno(\''+p.id+'\')" style="font-size:11px">Ver →</button></td></tr>';
-    });
-    html+='</tbody></table></div></div></div>';
-    grid.innerHTML=html;
-  }catch(err){grid.innerHTML='<p style="color:red;padding:1rem">Error: '+err.message+'</p>';}
-}
-
-function mkSC(ico,val,lbl,tipo){
-  var c=tipo==='pos'?'var(--green)':tipo==='neg'?'var(--red)':'#1a2744';
-  return '<div class="card" style="padding:1rem;text-align:center"><div style="font-size:1.8rem;margin-bottom:4px">'+ico+'</div><div style="font-size:1.6rem;font-weight:700;color:'+c+'">'+val+'</div><div style="font-size:11px;color:#9ca3af;margin-top:2px">'+lbl+'</div></div>';
-}
-
-function fmtF(d){
-  var diff=new Date()-d,mins=Math.floor(diff/60000),h=Math.floor(diff/3600000),days=Math.floor(diff/86400000);
-  if(mins<60)return 'Hace '+mins+'min';
-  if(h<24)return 'Hace '+h+'h';
-  if(days===1)return 'Ayer';
-  if(days<7)return 'Hace '+days+'d';
-  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'});
-}
-
-async function verDetalleAlumno(aid){
-  var grid=document.getElementById('alumnos-grid');
-  if(!grid)return;
-  grid.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
-  var [{data:p},{data:ej},{data:ac},{data:sims}]=await Promise.all([
-    supa.from('perfiles').select('*').eq('id',aid).single(),
-    supa.from('ejercicios_realizados').select('*').eq('alumno_id',aid).eq('completado',true).order('created_at',{ascending:false}),
-    supa.from('accesos').select('*').eq('usuario_id',aid).order('created_at',{ascending:false}).limit(20),
-    supa.from('simuladores').select('*'),
-  ]);
-  var sm={};(sims||[]).forEach(function(s){sm[s.id]=s;});
-  var html='<button class="btn-sm" onclick="renderAlumnos()" style="margin-bottom:1rem">← Volver</button>';
-  var n=(ej||[]).length;
-  var med=n>0?Math.round((ej||[]).reduce(function(s,e){return s+(e.puntuacion||0);},0)/n):null;
-  var av=p&&p.avatar_url?'<img src="'+p.avatar_url+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover">':'<div style="width:56px;height:56px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700">'+((p&&p.nombre)||'?')[0].toUpperCase()+'</div>';
-  var mc=med===null?'#9ca3af':med>=70?'var(--green)':med>=50?'var(--amber)':'var(--red)';
-  html+='<div class="card" style="margin-bottom:1rem"><div class="card-body"><div style="display:flex;align-items:center;gap:14px;margin-bottom:1rem">'+av+'<div><div style="font-size:1.1rem;font-weight:700;color:#1a2744">'+(p?p.nombre:'')+'</div><div style="font-size:12px;color:#9ca3af">'+(p?p.email:'')+'</div></div><div style="margin-left:auto;text-align:right"><div style="font-size:2rem;font-weight:700;color:'+mc+'">'+(med!==null?med+'%':'—')+'</div><div style="font-size:11px;color:#9ca3af">Media general</div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+mkSC('📝',n,'Ejercicios','')+mkSC('🔑',(ac||[]).length,'Accesos','')+mkSC('🏆',(n>0?((ej||[]).some(function(e){return e.nivel==='avanzado';})?'Avanzado':(ej||[]).some(function(e){return e.nivel==='medio';})?'Medio':'Básico'):'—'),'Nivel máx.','')+'</div></div></div>';
-  // Ejercicios por simulador
-  var porSim={};(ej||[]).forEach(function(e){if(!porSim[e.simulador_id])porSim[e.simulador_id]=[];porSim[e.simulador_id].push(e);});
-  html+='<div class="card" style="margin-bottom:1rem"><div class="card-header"><div class="card-title">📊 Por simulador</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:8px 14px">Simulador</th><th>Ejers.</th><th>Media</th><th>Nivel</th><th>Último</th></tr></thead><tbody>';
-  if(!Object.keys(porSim).length){html+='<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:#9ca3af">Sin ejercicios.</td></tr>';}
-  else{Object.keys(porSim).forEach(function(sid){var lista=porSim[sid];var s=sm[sid]||{nombre:'—',bloque:'—'};var med2=Math.round(lista.reduce(function(a,e){return a+(e.puntuacion||0);},0)/lista.length);var mc2=med2>=70?'var(--green)':med2>=50?'var(--amber)':'var(--red)';html+='<tr><td style="padding:8px 14px;font-size:13px;font-weight:600">'+s.nombre+'</td><td style="text-align:center">'+lista.length+'</td><td style="text-align:center;font-weight:700;color:'+mc2+'">'+med2+'%</td><td style="text-align:center;font-size:12px">'+lista[0].nivel+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+fmtF(new Date(lista[0].created_at))+'</td></tr>';});}
-  html+='</tbody></table></div></div>';
-  // Accesos
-  html+='<div class="card"><div class="card-header"><div class="card-title">🔑 Accesos</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:8px 14px">Fecha y hora</th><th>Hace</th></tr></thead><tbody>';
-  if(!ac||!ac.length){html+='<tr><td colspan="2" style="text-align:center;padding:1rem;color:#9ca3af">Sin accesos.</td></tr>';}
-  else{ac.forEach(function(a){var d=new Date(a.created_at);html+='<tr><td style="padding:8px 14px;font-size:13px">'+d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+fmtF(d)+'</td></tr>';});}
-  html+='</tbody></table></div></div>';
-  grid.innerHTML=html;
-}
-
-// ── Actividades evaluables ────────────────────────────
-async function renderActividades(){
-  var cont=document.getElementById('actividades-cont');
-  if(!cont)return;
-  if(!USUARIO_ACTUAL||USUARIO_ACTUAL.rol!=='docente'){
-    cont.innerHTML='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem">Solo el docente puede gestionar actividades.</div></div>';
-    return;
-  }
-  cont.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
-  var [{data:acts},{data:sims},{data:entregas}]=await Promise.all([
-    supa.from('actividades').select('*').eq('docente_id',USUARIO_ACTUAL.id).order('created_at',{ascending:false}),
-    supa.from('simuladores').select('*'),
-    supa.from('entregas').select('actividad_id,alumno_id,puntuacion_automatica,puntuacion_docente'),
-  ]);
-  var sm={};(sims||[]).forEach(function(s){sm[s.id]=s;});
-  var html='<div class="card" style="margin-bottom:1.25rem"><div class="card-header"><div class="card-title">➕ Nueva actividad</div></div><div class="card-body">';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">';
-  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Simulador</div><select id="act-sim" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px">';
-  Object.keys(SIMS_INFO).forEach(function(k){html+='<option value="'+k+'">'+SIMS_INFO[k].nombre+'</option>';});
-  html+='</select></div>';
-  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Nivel</div><select id="act-nivel" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px"><option value="basico">⭐ Básico</option><option value="medio" selected>⭐⭐ Medio</option><option value="avanzado">⭐⭐⭐ Avanzado</option></select></div>';
-  html+='</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">';
-  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Título</div><input id="act-titulo" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" type="text" placeholder="Ej: AE1 — Préstamos"></div>';
-  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="act-fecha" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" type="datetime-local"></div>';
-  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálc/Int/Teo</div><div style="display:flex;gap:6px"><input id="act-p-calc" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="60"><input id="act-p-int" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="30"><input id="act-p-teo" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="10"></div></div>';
-  html+='</div><button class="btn-calc" onclick="crearActividad()" style="padding:10px 28px;font-size:14px">Crear actividad</button></div></div>';
-
-  if(!acts||!acts.length){
-    html+='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem"><div style="font-size:2rem;margin-bottom:8px">📝</div>No hay actividades creadas.</div></div>';
-  } else {
-    html+='<div class="card"><div class="card-header"><div class="card-title">📋 Actividades creadas</div></div><div class="card-body" style="padding:0"><div style="overflow-x:auto"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Actividad</th><th>Simulador</th><th>Nivel</th><th>Fecha límite</th><th>Entregas</th><th>Estado</th><th></th></tr></thead><tbody>';
-    acts.forEach(function(act){
-      var s=sm[act.simulador_id]||{};
-      var ea=(entregas||[]).filter(function(e){return e.actividad_id===act.id;});
-      var ahora=new Date();var lim=act.fecha_limite?new Date(act.fecha_limite):null;
-      var activa=act.activa&&(!lim||lim>ahora);
-      var slbl=!act.activa?'⏸ Pausada':(!lim||lim>ahora)?'✅ Activa':'🔒 Cerrada';
-      var sc=!act.activa?'#9ca3af':(!lim||lim>ahora)?'var(--green)':'var(--red)';
-      var nlbl={basico:'⭐ Básico',medio:'⭐⭐ Medio',avanzado:'⭐⭐⭐ Avanzado'}[act.nivel]||act.nivel;
-      var actId=act.id;
-      html+='<tr><td style="padding:10px 14px"><div style="font-weight:600;font-size:13px">'+act.titulo+'</div><div style="font-size:11px;color:#9ca3af">'+act.peso_calculo+'% calc · '+act.peso_interpretacion+'% int · '+act.peso_teoria+'% teo</div></td><td style="text-align:center;font-size:12px">'+(s.nombre||'—')+'</td><td style="text-align:center;font-size:12px">'+nlbl+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(lim?lim.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'Sin límite')+'</td><td style="text-align:center;font-weight:700;color:#1a2744">'+ea.length+'</td><td style="text-align:center"><span style="font-size:12px;font-weight:700;color:'+sc+'">'+slbl+'</span></td>';
-      html+='<td style="text-align:center;white-space:nowrap"><button class="btn-sm" data-id="'+actId+'" onclick="verEntregas(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">Ver</button><button class="btn-sm" data-id="'+actId+'" data-activa="'+act.activa+'" onclick="toggleActividad(this.getAttribute(\'data-id\'),this.getAttribute(\'data-activa\')===\'true\')" style="font-size:11px;color:'+(act.activa?'var(--red)':'var(--green)')+';margin-right:2px">'+(act.activa?'⏸':'▶')+'</button><button class="btn-sm" data-id="'+actId+'" onclick="editarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">✏️</button><button class="btn-sm" data-id="'+actId+'" onclick="eliminarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;color:var(--red)">🗑</button></td></tr>';
-    });
-    html+='</tbody></table></div></div></div>';
-  }
-  cont.innerHTML=html;
-}
-
-async function crearActividad(){
-  var simCod=document.getElementById('act-sim').value;
-  var nivel=document.getElementById('act-nivel').value;
-  var titulo=document.getElementById('act-titulo').value.trim();
-  var fecha=document.getElementById('act-fecha').value;
-  var pC=parseInt(document.getElementById('act-p-calc').value)||60;
-  var pI=parseInt(document.getElementById('act-p-int').value)||30;
-  var pT=parseInt(document.getElementById('act-p-teo').value)||10;
-  if(!titulo){flash('Introduce un título','#dc2626');return;}
-  if(pC+pI+pT!==100){flash('Los pesos deben sumar 100%','#dc2626');return;}
-  var {data:sim}=await supa.from('simuladores').select('id').eq('codigo',simCod).single();
-  if(!sim){flash('Simulador no encontrado','#dc2626');return;}
-  var {error}=await supa.from('actividades').insert({
-    docente_id:USUARIO_ACTUAL.id,grupo_id:GRUPO_ID_ACTUAL,simulador_id:sim.id,
-    titulo,nivel,fecha_limite:fecha||null,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT,activa:true
-  });
-  if(error){flash('Error: '+error.message,'#dc2626');return;}
-  flash('✅ Actividad creada','#16a34a');
-  renderActividades();
-}
-
-async function toggleActividad(actId,estaActiva){
-  await supa.from('actividades').update({activa:!estaActiva}).eq('id',actId);
-  renderActividades();
-}
-
-async function eliminarActividad(actId){
-  if(!confirm('¿Eliminar esta actividad? Se eliminarán también todas las entregas.'))return;
-  await supa.from('actividades').delete().eq('id',actId);
-  flash('✅ Actividad eliminada','#16a34a');
-  renderActividades();
-}
-
-async function editarActividad(actId){
-  var {data:act}=await supa.from('actividades').select('*').eq('id',actId).single();
-  if(!act)return;
-  var m=document.createElement('div');
-  m.id='edit-modal';
-  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
-  var fv=act.fecha_limite?new Date(act.fecha_limite).toISOString().slice(0,16):'';
-  m.innerHTML='<div style="background:#fff;border-radius:12px;padding:1.5rem;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
-    '<div style="font-size:1.1rem;font-weight:700;color:#1a2744;margin-bottom:1rem">✏️ Editar actividad</div>'+
-    '<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Título</div><input id="edit-titulo" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+act.titulo+'"></div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'+
-    '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Nivel</div><select id="edit-nivel" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px"><option value="basico"'+(act.nivel==='basico'?' selected':'')+'>⭐ Básico</option><option value="medio"'+(act.nivel==='medio'?' selected':'')+'>⭐⭐ Medio</option><option value="avanzado"'+(act.nivel==='avanzado'?' selected':'')+'>⭐⭐⭐ Avanzado</option></select></div>'+
-    '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="edit-fecha" type="datetime-local" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+fv+'"></div></div>'+
-    '<div style="margin-bottom:1rem"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálculo/Interpretación/Teoría</div><div style="display:flex;gap:8px"><input id="edit-pc" type="number" value="'+act.peso_calculo+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pi" type="number" value="'+act.peso_interpretacion+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pt" type="number" value="'+act.peso_teoria+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"></div></div>'+
-    '<div style="display:flex;gap:8px;justify-content:flex-end">'+
-    '<button class="btn-sm" onclick="document.getElementById(\'edit-modal\').remove()">Cancelar</button>'+
-    '<button class="btn-calc" data-id="'+actId+'" onclick="guardarEdicion(this.getAttribute(\'data-id\'))" style="padding:8px 20px">💾 Guardar</button>'+
-    '</div></div>';
-  document.body.appendChild(m);
-}
-
-async function guardarEdicion(actId){
-  var titulo=document.getElementById('edit-titulo').value.trim();
-  var nivel=document.getElementById('edit-nivel').value;
-  var fecha=document.getElementById('edit-fecha').value;
-  var pC=parseInt(document.getElementById('edit-pc').value)||60;
-  var pI=parseInt(document.getElementById('edit-pi').value)||30;
-  var pT=parseInt(document.getElementById('edit-pt').value)||10;
-  if(!titulo){flash('El título no puede estar vacío','#dc2626');return;}
-  if(pC+pI+pT!==100){flash('Los pesos deben sumar 100%','#dc2626');return;}
-  var {error}=await supa.from('actividades').update({titulo,nivel,fecha_limite:fecha||null,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT}).eq('id',actId);
-  if(error){flash('Error: '+error.message,'#dc2626');return;}
-  document.getElementById('edit-modal').remove();
-  flash('✅ Actividad actualizada','#16a34a');
-  renderActividades();
-}
-
-async function verEntregas(actId){
-  var cont=document.getElementById('actividades-cont');
-  if(!cont)return;
-  cont.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
-  var [{data:act},{data:ents},{data:perfs}]=await Promise.all([
-    supa.from('actividades').select('*').eq('id',actId).single(),
-    supa.from('entregas').select('*').eq('actividad_id',actId).order('entregada_at',{ascending:false}),
-    supa.from('perfiles').select('id,nombre,email,avatar_url').eq('rol','alumno'),
-  ]);
-  var pm={};(perfs||[]).forEach(function(p){pm[p.id]=p;});
-  var html='<button class="btn-sm" onclick="renderActividades()" style="margin-bottom:1rem">← Volver</button>';
-  html+='<div class="card" style="margin-bottom:1rem"><div class="card-body"><div style="font-size:1rem;font-weight:700;color:#1a2744">'+act.titulo+'</div><div style="font-size:12px;color:#9ca3af">'+act.nivel+' · '+act.peso_calculo+'% cálculo / '+act.peso_interpretacion+'% interpretación / '+act.peso_teoria+'% teoría</div></div></div>';
-  html+='<div class="card"><div class="card-header"><div class="card-title">📬 Entregas</div><div style="font-size:12px;color:#9ca3af">'+(ents?ents.length:0)+' entrega'+(ents&&ents.length!==1?'s':'')+'</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Alumno</th><th>Entregado</th><th>Puntuación auto.</th><th>Nota docente</th><th>Comentario</th><th></th></tr></thead><tbody>';
-  if(!ents||!ents.length){html+='<tr><td colspan="6" style="text-align:center;padding:2rem;color:#9ca3af">Ningún alumno ha entregado todavía.</td></tr>';}
-  else{ents.forEach(function(ent){
-    var p=pm[ent.alumno_id]||{nombre:'Alumno',email:''};
-    var av=p.avatar_url?'<img src="'+p.avatar_url+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover">':'<div style="width:28px;height:28px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+(p.nombre[0]||'?')+'</div>';
-    var pa=ent.puntuacion_automatica;
-    var mc2=pa===null?'#9ca3af':pa>=70?'var(--green)':pa>=50?'var(--amber)':'var(--red)';
-    html+='<tr><td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:8px">'+av+'<div><div style="font-size:13px;font-weight:600">'+p.nombre+'</div><div style="font-size:11px;color:#9ca3af">'+p.email+'</div></div></div></td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(ent.entregada_at?new Date(ent.entregada_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—')+'</td><td style="text-align:center;font-weight:700;color:'+mc2+'">'+(pa!==null?pa+'%':'—')+'</td>';
-    html+='<td style="text-align:center"><input type="number" min="0" max="10" step="0.1" placeholder="—" value="'+(ent.puntuacion_docente||'')+'" id="nota-'+ent.id+'" style="width:60px;text-align:center;padding:4px;border:1px solid #d1ccc6;border-radius:6px;font-size:13px"></td>';
-    html+='<td><input type="text" placeholder="Comentario..." value="'+(ent.comentario_docente||'')+'" id="com-'+ent.id+'" style="width:100%;padding:4px 8px;border:1px solid #d1ccc6;border-radius:6px;font-size:12px"></td>';
-    html+='<td style="text-align:center"><button class="btn-sm btn-navy" data-id="'+ent.id+'" onclick="guardarNota(this.getAttribute(\'data-id\'))" style="font-size:11px">💾</button></td></tr>';
-  });}
-  html+='</tbody></table></div></div>';
-  cont.innerHTML=html;
-}
-
-async function guardarNota(entId){
-  var nota=parseFloat(document.getElementById('nota-'+entId).value);
-  var com=document.getElementById('com-'+entId).value.trim();
-  if(isNaN(nota)||nota<0||nota>10){flash('Nota entre 0 y 10','#dc2626');return;}
-  var {error}=await supa.from('entregas').update({puntuacion_docente:nota,comentario_docente:com,calificada_at:new Date().toISOString()}).eq('id',entId);
-  if(error){flash('Error: '+error.message,'#dc2626');return;}
-  flash('✅ Nota guardada','#16a34a');
-}
-
-// ── initAuth ──────────────────────────────────────────
-async function initAuth(){
-  mostrarCargando();
-  var {data:{session}}=await supa.auth.getSession();
-  if(session){
-    var perfil=await cargarPerfil(session.user.id);
-    if(perfil){mostrarApp();actualizarUIConPerfil(perfil);registrarAcceso();}
-    else{setTimeout(async function(){var p=await cargarPerfil(session.user.id);if(p){mostrarApp();actualizarUIConPerfil(p);registrarAcceso();}else mostrarLogin();},1500);}
-  } else {mostrarLogin();}
-  supa.auth.onAuthStateChange(async function(event,session){
-    if(event==='SIGNED_IN'&&session){
-      mostrarCargando();
-      setTimeout(async function(){var p=await cargarPerfil(session.user.id);if(p){mostrarApp();actualizarUIConPerfil(p);registrarAcceso();}else mostrarLogin();},1000);
-    } else if(event==='SIGNED_OUT'){USUARIO_ACTUAL=null;mostrarLogin();}
-  });
-}
-
-// ── Bind button + start ───────────────────────────────
-// Direct execution - script is at end of body, DOM already ready
-(function(){
-  var btn=document.getElementById('btn-google-login');
-  if(btn)btn.addEventListener('click',loginConGoogle);
-  initAuth();
-})();
-
-</script>
 
 
 
