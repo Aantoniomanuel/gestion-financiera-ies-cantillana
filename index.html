@@ -19748,6 +19748,8 @@ var INF = {nivel:'semiguiado', alumno:'', curso:'', fecha: new Date().toISOStrin
 var INF_RUB = {};
 var EJ_NIVEL = 'basico';
 var EJ_RESP = {};
+var EJ_ACTIVIDAD = null;
+var EJ_ENTREGA_ID = null;
 
 // ── Rangos óptimos por sector ─────────────────────────
 var RANGOS = {
@@ -20591,8 +20593,9 @@ function renderEjercicio(main){
         '<button class="nivel-btn'+(EJ_NIVEL==='avanzado'?' active':'')+'" style="padding:6px 14px;border-radius:20px;border:1.5px solid rgba(255,255,255,.25);font-size:12px;font-weight:600;cursor:pointer;background:'+(EJ_NIVEL==='avanzado'?'var(--gold)':'transparent')+';color:'+(EJ_NIVEL==='avanzado'?'var(--navy)':'rgba(255,255,255,.65)')+';" onclick="EJ_NIVEL=\'avanzado\';setModo(\'ejercicio\')">⭐⭐⭐ Avanzado</button>'+
       '</div>'+
     '</div>'+
-    '<button style="padding:10px 22px;background:var(--gold);color:var(--navy);border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0" onclick="setModo(\'ejercicio\')">🎲 Nuevo ejercicio</button>';
-  main.appendChild(hdr);
+    '<button style="padding:10px 22px;background:var(--gold);color:var(--navy);border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0" onclick="setModo(\'ejercicio\')">🎲 Nuevo ejercicio</button>'+
+    (EJ_ACTIVIDAD ? '<button style="padding:5px 12px;border-radius:20px;background:#dc2626;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;margin-left:8px" onclick="iniciarEjercicioEvaluable()">'+(EJ_ENTREGA_ID&&EJ_ENTREGA_ID!=="pendiente"?'📝 Continuar actividad':'📝 Actividad evaluable')+'</button>' : '');
+  main.appendChild(hdr);;
 
   // Enunciado
   var enuncCard=card('📋 Datos de la empresa: '+caso.nombre);
@@ -20690,6 +20693,15 @@ function corregirEjAEF(){
     '<button style="padding:10px 22px;background:var(--surface2);color:var(--navy);border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;margin-top:10px;margin-left:8px" onclick="verSolAEF()">👁 Ver solución</button>'+
   '</div>';
   if(res)res.scrollIntoView({behavior:'smooth',block:'start'});
+  // Notificar a la app
+  try{
+    window.parent.postMessage({
+      tipo:'ejercicio_completado', simulador:'sim-aef',
+      nivel:EJ_NIVEL, puntuacion:pct2,
+      entregaId:(EJ_ENTREGA_ID&&EJ_ENTREGA_ID!=='pendiente')?EJ_ENTREGA_ID:null,
+      timestamp:new Date().toISOString()
+    },'*');
+  }catch(e){}
 }
 
 function verSolAEF(){
@@ -20946,7 +20958,50 @@ function fmt(v){return (v||0).toLocaleString('es-ES',{minimumFractionDigits:2,ma
 function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function flash(msg){var e=document.getElementById('flash');e.textContent=msg;e.classList.add('show');setTimeout(function(){e.classList.remove('show');},2500);}
 
-window.addEventListener('load',function(){setModo('datos');});
+window.addEventListener('load',function(){
+  setModo('datos');
+  // Pedir info de actividad evaluable
+  setTimeout(function(){
+    window.parent.postMessage({tipo:'check_actividad',simulador:'sim-aef'},'*');
+  },600);
+});
+
+// Escuchar mensajes de la app
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  // Nivel adaptativo
+  if(e.data.tipo==='set_nivel_aef'){
+    if(['basico','medio','avanzado'].includes(e.data.nivel)) EJ_NIVEL=e.data.nivel;
+  }
+  // Info actividad evaluable
+  if(e.data.tipo==='actividad_info_aef'){
+    EJ_ACTIVIDAD=e.data.actividad||null;
+    EJ_ENTREGA_ID=e.data.entregaId||null;
+    var tab=document.getElementById('mt-ejercicio');
+    if(tab) tab.innerHTML=EJ_ACTIVIDAD
+      ?'🎓 Ejercicio <span style="background:#dc2626;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;margin-left:4px">EVAL</span>'
+      :'🎓 Ejercicio';
+  }
+  // Entrega confirmada
+  if(e.data.tipo==='entrega_iniciada_aef'){
+    EJ_ENTREGA_ID=e.data.entregaId;
+  }
+});
+
+function iniciarEjercicioEvaluable(){
+  if(!EJ_ACTIVIDAD)return;
+  if(EJ_ENTREGA_ID&&EJ_ENTREGA_ID!=='pendiente'){
+    flash('Ya tienes esta actividad iniciada. Resuelve el ejercicio y pulsa Corregir.');
+    return;
+  }
+  window.parent.postMessage({
+    tipo:'iniciar_entrega_evaluable', simulador:'sim-aef',
+    actividadId:EJ_ACTIVIDAD.id, nivel:EJ_NIVEL, datosCaso:{}
+  },'*');
+  EJ_ENTREGA_ID='pendiente';
+  if(typeof MODO!=='undefined'&&MODO!=='ejercicio') setModo('ejercicio');
+  flash('📝 Actividad evaluable iniciada. Resuelve y pulsa Corregir para entregar.');
+}
 __SCRIPTCLOSE__
 </body>
 </html>
