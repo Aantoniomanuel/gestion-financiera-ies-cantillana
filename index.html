@@ -10867,6 +10867,7 @@ function loadSim(id){
     'Cargando simulador\u2026</div>';
   setTimeout(function(){
     var html=SIM_HTML[id];
+    console.log('loadSim', id, 'html length:', html ? html.length : 'NULL');
     if(!html){root.innerHTML='<div style="padding:2rem;color:red">Simulador no encontrado: '+id+'</div>';return;}
     var blob=new Blob([html],{type:'text/html;charset=utf-8'});
     var url=URL.createObjectURL(blob);
