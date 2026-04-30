@@ -11347,10 +11347,13 @@ async function renderMisActividades(){
     var entregaMap = {};
     (entregas||[]).forEach(function(e){ entregaMap[e.actividad_id] = e; });
     console.log('Entregas:', (entregas||[]).length, 'entregaMap keys:', Object.keys(entregaMap));
+    console.log('entregaMap detail:', JSON.stringify(Object.entries(entregaMap).map(function(kv){ return {id:kv[0], entregada:kv[1].entregada_at}; })));
 
     var pendientes = (acts||[]).filter(function(a){ 
       var e = entregaMap[a.id];
-      return !e || !e.entregada_at;
+      var isPending = !e || !e.entregada_at;
+      console.log('Act', a.titulo, '- entrega:', e?'exists':'none', '- entregada_at:', e?e.entregada_at:'—', '- isPending:', isPending);
+      return isPending;
     });
     console.log('Pendientes:', pendientes.length);
     var completadas = (entregas||[]).filter(function(e){ return e.entregada_at; });
