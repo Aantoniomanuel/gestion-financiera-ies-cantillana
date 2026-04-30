@@ -11334,7 +11334,12 @@ async function renderMisActividades(){
     // Load all active activities for the student's group
     var ahora = new Date().toISOString();
     var {data:acts} = await supa.from('actividades').select('*, simuladores(nombre,codigo)')
-      .eq('activa', true).or('fecha_limite.is.null,fecha_limite.gt.'+ahora);
+      .eq('activa', true);
+    // Filter client-side to avoid Supabase OR query issues
+    acts = (acts||[]).filter(function(a){
+      if(!a.fecha_limite) return true;
+      return new Date(a.fecha_limite) > new Date();
+    });
 
     // Load student's entregas
     var {data:entregas} = await supa.from('entregas').select('*').eq('alumno_id', USUARIO_ACTUAL.id);
