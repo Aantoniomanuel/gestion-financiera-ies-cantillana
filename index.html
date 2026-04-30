@@ -11015,6 +11015,8 @@ async function comprobarActividadActiva(simCod){
   var act=acts[0];
   var {data:entrega}=await supa.from('entregas').select('*')
     .eq('actividad_id',act.id).eq('alumno_id',USUARIO_ACTUAL.id).maybeSingle();
+  // Si ya fue entregada (completada), no mostrar el botón
+  if(entrega && entrega.entregada_at) return null;
   return {actividad:act,entrega:entrega||null};
 }
 
