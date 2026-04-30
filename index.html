@@ -10893,9 +10893,24 @@ function loadSim(id){
           },800);
         },1000);
       } else {
-        // Normal load - check for active activity
-        setTimeout(function(){
+        // Normal load - check for active activity and send current level
+        setTimeout(async function(){
           ifr.contentWindow.postMessage({tipo:'check_actividad', simulador:id},'*');
+          // Send current adaptive level for this simulator
+          if(USUARIO_ACTUAL){
+            var {data:sim} = await supa.from('simuladores').select('id').eq('codigo',id).single();
+            if(sim){
+              var {data:ult} = await supa.from('ejercicios_realizados').select('nivel')
+                .eq('alumno_id',USUARIO_ACTUAL.id).eq('simulador_id',sim.id).eq('completado',true)
+                .order('created_at',{ascending:false}).limit(1);
+              if(ult&&ult.length>0){
+                ifr.contentWindow.postMessage({
+                  tipo:'set_nivel_'+id.replace('sim-',''),
+                  nivel:ult[0].nivel
+                },'*');
+              }
+            }
+          }
         },600);
       }
     };
