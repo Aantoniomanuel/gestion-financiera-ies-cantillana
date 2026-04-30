@@ -10873,13 +10873,33 @@ function loadSim(id){
     var ifr=document.createElement('iframe');
     ifr.src=url;
     ifr.style.cssText='width:100%;height:calc(100vh - 58px);border:none;display:block';
-    ifr.onload=function(){URL.revokeObjectURL(url);};
+    ifr.onload=function(){
+      URL.revokeObjectURL(url);
+      // Check if this load was triggered from Mis Actividades panel
+      var pending = window._pendingActividad;
+      if(pending && pending.simCod === id){
+        window._pendingActividad = null;
+        setTimeout(function(){
+          // Send actividad info directly (no need to check, we know it's active)
+          ifr.contentWindow.postMessage({
+            tipo:      'actividad_info_'+id.replace('sim-',''),
+            actividad: {id: pending.actId, nivel: pending.nivel},
+            entregaId: pending.entregaId
+          },'*');
+          // Go to ejercicio mode and generate new case
+          setTimeout(function(){
+            ifr.contentWindow.postMessage({tipo:'ir_a_ejercicio'},'*');
+          },200);
+        },600);
+      } else {
+        // Normal load - check for active activity
+        setTimeout(function(){
+          ifr.contentWindow.postMessage({tipo:'check_actividad', simulador:id},'*');
+        },600);
+      }
+    };
     root.innerHTML='';
     root.appendChild(ifr);
-    // Notify simulator of active activity
-    setTimeout(function(){
-      ifr.contentWindow.postMessage({tipo:'check_actividad', simulador:id},'*');
-    },800);
   },80);
 }
 
@@ -11433,9 +11453,9 @@ async function renderMisActividades(){
 }
 
 async function iniciarDesdePanel(btn){
-  var actId   = btn.getAttribute('data-actid');
-  var simCod  = btn.getAttribute('data-simcod');
-  var nivel   = btn.getAttribute('data-nivel');
+  var actId  = btn.getAttribute('data-actid');
+  var simCod = btn.getAttribute('data-simcod');
+  var nivel  = btn.getAttribute('data-nivel');
   if(!actId || !simCod) return;
 
   btn.disabled = true;
@@ -11443,37 +11463,24 @@ async function iniciarDesdePanel(btn){
 
   // Create or get entrega
   var entrega = await iniciarEntrega(actId, {});
-  if(!entrega){ btn.disabled=false; btn.textContent='▶ Realizar actividad'; flash('Error al iniciar la actividad','#dc2626'); return; }
+  if(!entrega){
+    btn.disabled = false;
+    btn.textContent = '▶ Realizar actividad';
+    flash('Error al iniciar la actividad','#dc2626');
+    return;
+  }
 
-  // Navigate to simulator
+  // Store pending actividad info so loadSim can pick it up
+  window._pendingActividad = {
+    actId:     actId,
+    simCod:    simCod,
+    nivel:     nivel,
+    entregaId: entrega.id
+  };
+
+  // Navigate to simulator — loadSim will detect _pendingActividad
   var navBtn = document.getElementById('ns-'+simCod);
   if(navBtn) navBtn.click();
-
-  // Wait for iframe to load, then send actividad info
-  var intentos = 0;
-  var interval = setInterval(function(){
-    var root = document.getElementById(simCod+'-root');
-    var ifr = root ? root.querySelector('iframe') : null;
-    if(ifr && ifr.contentWindow){
-      clearInterval(interval);
-      setTimeout(function(){
-        ifr.contentWindow.postMessage({
-          tipo: 'actividad_info_'+simCod.replace('sim-',''),
-          actividad: {id: actId, nivel: nivel},
-          entregaId: entrega.id
-        }, '*');
-        // Also set nivel
-        ifr.contentWindow.postMessage({
-          tipo: 'set_nivel_'+simCod.replace('sim-',''),
-          nivel: nivel
-        }, '*');
-        // Switch to ejercicio mode
-        ifr.contentWindow.postMessage({tipo: 'ir_a_ejercicio'}, '*');
-      }, 500);
-    }
-    intentos++;
-    if(intentos > 20) clearInterval(interval);
-  }, 300);
 }
 
 // ── initAuth ──────────────────────────────────────────
