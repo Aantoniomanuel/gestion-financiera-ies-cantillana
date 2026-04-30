@@ -11340,16 +11340,19 @@ async function renderMisActividades(){
       if(!a.fecha_limite) return true;
       return new Date(a.fecha_limite) > new Date();
     });
+    console.log('Acts after filter:', acts.length);
 
     // Load student's entregas
     var {data:entregas} = await supa.from('entregas').select('*').eq('alumno_id', USUARIO_ACTUAL.id);
     var entregaMap = {};
     (entregas||[]).forEach(function(e){ entregaMap[e.actividad_id] = e; });
+    console.log('Entregas:', (entregas||[]).length, 'entregaMap keys:', Object.keys(entregaMap));
 
     var pendientes = (acts||[]).filter(function(a){ 
       var e = entregaMap[a.id];
       return !e || !e.entregada_at;
     });
+    console.log('Pendientes:', pendientes.length);
     var completadas = (entregas||[]).filter(function(e){ return e.entregada_at; });
 
     var html = '';
