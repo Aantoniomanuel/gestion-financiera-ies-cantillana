@@ -10968,8 +10968,19 @@ function actualizarUIConPerfil(perfil){
       }
       // Hide prof items for alumno
       if(perfil.rol==='alumno'){
-        var hide=['sec-prof','nav-nuevo-bloque','nav-banco','nav-alumnos','nav-eval','nav-actividades','nav-materiales','btn-add-evento'];
+        var hide=[
+          'sec-prof','nav-nuevo-bloque','nav-banco','nav-alumnos',
+          'nav-eval','nav-actividades','nav-materiales','btn-add-evento',
+          'rb-prof','rb-alu','grp-herr'
+        ];
         hide.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+        // Hide rol-btns container
+        var rolBtns=document.querySelector('.rol-btns');
+        if(rolBtns) rolBtns.style.display='none';
+        // Hide edit buttons in content pages
+        document.querySelectorAll('.btn-edit-bloque,.btn-add-ud,.btn-nuevo-contenido,[onclick*="abrirModal"],[onclick*="editarBloque"],[onclick*="nuevoContenido"]').forEach(function(el){
+          el.style.display='none';
+        });
       }
     },50);
   });
