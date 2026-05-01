@@ -11188,11 +11188,12 @@ async function verDetalleAlumno(aid){
   var grid=document.getElementById('alumnos-grid');
   if(!grid)return;
   grid.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
-  var [{data:p},{data:ej},{data:ac},{data:sims}]=await Promise.all([
+  var [{data:p},{data:ej},{data:ac},{data:sims},{data:entregas}]=await Promise.all([
     supa.from('perfiles').select('*').eq('id',aid).single(),
     supa.from('ejercicios_realizados').select('*').eq('alumno_id',aid).eq('completado',true).order('created_at',{ascending:false}),
     supa.from('accesos').select('*').eq('usuario_id',aid).order('created_at',{ascending:false}).limit(20),
     supa.from('simuladores').select('*'),
+    supa.from('entregas').select('*, actividades(titulo,nivel,peso_calculo,peso_interpretacion,peso_teoria,simuladores(nombre))').eq('alumno_id',aid).order('entregada_at',{ascending:false}),
   ]);
   var sm={};(sims||[]).forEach(function(s){sm[s.id]=s;});
   var html='<button class="btn-sm" onclick="renderAlumnos()" style="margin-bottom:1rem">← Volver</button>';
@@ -11207,6 +11208,48 @@ async function verDetalleAlumno(aid){
   if(!Object.keys(porSim).length){html+='<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:#9ca3af">Sin ejercicios.</td></tr>';}
   else{Object.keys(porSim).forEach(function(sid){var lista=porSim[sid];var s=sm[sid]||{nombre:'—',bloque:'—'};var med2=Math.round(lista.reduce(function(a,e){return a+(e.puntuacion||0);},0)/lista.length);var mc2=med2>=70?'var(--green)':med2>=50?'var(--amber)':'var(--red)';html+='<tr><td style="padding:8px 14px;font-size:13px;font-weight:600">'+s.nombre+'</td><td style="text-align:center">'+lista.length+'</td><td style="text-align:center;font-weight:700;color:'+mc2+'">'+med2+'%</td><td style="text-align:center;font-size:12px">'+lista[0].nivel+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+fmtF(new Date(lista[0].created_at))+'</td></tr>';});}
   html+='</tbody></table></div></div>';
+  // Actividades evaluables
+  html+='<div class="card" style="margin-bottom:1rem"><div class="card-header"><div class="card-title">📝 Actividades evaluables</div>'+
+    '<div style="font-size:12px;color:#9ca3af">'+(entregas?entregas.length:0)+' entrega'+(entregas&&entregas.length!==1?'s':'')+'</div></div>'+
+    '<div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr>'+
+    '<th style="text-align:left;padding:10px 14px">Actividad</th>'+
+    '<th>Simulador</th><th>Nivel</th><th>Entregada</th><th>Puntuación auto.</th><th>Nota docente</th><th>Comentario</th><th></th>'+
+    '</tr></thead><tbody>';
+
+  if(!entregas||!entregas.length){
+    html+='<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:#9ca3af">Sin entregas todavía.</td></tr>';
+  } else {
+    entregas.forEach(function(ent){
+      var act = ent.actividades || {};
+      var sim = act.simuladores || {};
+      var entregada = ent.entregada_at ? new Date(ent.entregada_at) : null;
+      var pAuto = ent.puntuacion_automatica;
+      var pDoc  = ent.puntuacion_docente;
+      var autoCol = pAuto===null?'#9ca3af':pAuto>=70?'var(--green)':pAuto>=50?'var(--amber)':'var(--red)';
+      var docCol  = pDoc===null?'#9ca3af':pDoc>=7?'var(--green)':pDoc>=5?'var(--amber)':'var(--red)';
+      var nivelLabel = {basico:'⭐',medio:'⭐⭐',avanzado:'⭐⭐⭐'}[act.nivel]||'—';
+      html+='<tr>'+
+        '<td style="padding:10px 14px;font-weight:600;font-size:13px">'+(act.titulo||'—')+'</td>'+
+        '<td style="text-align:center;font-size:12px">'+(sim.nombre||'—')+'</td>'+
+        '<td style="text-align:center">'+nivelLabel+'</td>'+
+        '<td style="text-align:center;font-size:12px;color:#9ca3af">'+(entregada?entregada.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—')+'</td>'+
+        '<td style="text-align:center;font-weight:700;color:'+autoCol+'">'+(pAuto!==null?pAuto+'%':'—')+'</td>'+
+        '<td style="text-align:center">'+
+          '<input type="number" min="0" max="10" step="0.1" placeholder="—" value="'+(pDoc!==null?pDoc:'')+'" '+
+          'id="nota-'+ent.id+'" style="width:65px;text-align:center;padding:4px;border:1px solid #d1ccc6;border-radius:6px;font-size:13px">'+
+        '</td>'+
+        '<td>'+
+          '<input type="text" placeholder="Comentario..." value="'+(ent.comentario_docente||'')+'" '+
+          'id="com-'+ent.id+'" style="width:100%;padding:4px 8px;border:1px solid #d1ccc6;border-radius:6px;font-size:12px">'+
+        '</td>'+
+        '<td style="text-align:center">'+
+          '<button class="btn-sm btn-navy" data-id="'+ent.id+'" onclick="guardarNota(this.getAttribute('data-id'))" style="font-size:11px">💾</button>'+
+        '</td>'+
+      '</tr>';
+    });
+  }
+  html+='</tbody></table></div></div>';
+
   // Accesos
   html+='<div class="card"><div class="card-header"><div class="card-title">🔑 Accesos</div></div><div class="card-body" style="padding:0"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:8px 14px">Fecha y hora</th><th>Hace</th></tr></thead><tbody>';
   if(!ac||!ac.length){html+='<tr><td colspan="2" style="text-align:center;padding:1rem;color:#9ca3af">Sin accesos.</td></tr>';}
