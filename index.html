@@ -6302,7 +6302,7 @@ function guardarCalculoPregunta(tipo, editId, nuevaBase){
 // ══════════════════════════════════════════════════════
 //  VISTA ALUMNO — Ejercicio de cálculo interactivo
 // ══════════════════════════════════════════════════════
-function renderEjercicioCalculo(p, contenedor, onCorregir, pesosCalculo){
+function renderEjercicioCalculo(p, contenedor, onCorregir, pesosCalculo, esEval){
   contenedor.innerHTML='';
   var datos = p.solDatos || [];
   var nPasos = (p.solPasos||[]).length;
@@ -6449,8 +6449,15 @@ function renderEjercicioCalculo(p, contenedor, onCorregir, pesosCalculo){
   // ── Botón corregir ────────────────────────────────────
   var btnCorr=document.createElement('button'); btnCorr.className='btn btn-p';
   btnCorr.style.cssText='width:100%;padding:12px;font-size:15px;margin-top:16px';
-  btnCorr.innerHTML='✓ Corregir ejercicio';
-  btnCorr.onclick=function(){ corregirCalculo(p, wrap, onCorregir, pesosCalculo); };
+  if(esEval){
+    // En modo evaluable el alumno no puede ver la corrección antes de entregar
+    btnCorr.innerHTML='🔒 Corrección bloqueada — entrega el ejercicio para ver el resultado';
+    btnCorr.disabled=true;
+    btnCorr.style.cssText='width:100%;padding:12px;font-size:14px;margin-top:16px;background:#6b7280;color:#fff;border:none;border-radius:var(--r);cursor:not-allowed;opacity:.8';
+  } else {
+    btnCorr.innerHTML='✓ Corregir ejercicio';
+    btnCorr.onclick=function(){ corregirCalculo(p, wrap, onCorregir, pesosCalculo); };
+  }
   wrap.appendChild(btnCorr);
 
   contenedor.appendChild(wrap);
@@ -9025,10 +9032,13 @@ function abrirModalActividad(act, pregs, esEval, udId){
   var ph=document.createElement('div');
   ph.style.cssText='display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--navy);border-radius:var(--rl) var(--rl) 0 0;flex-shrink:0;position:sticky;top:0;z-index:1';
   ph.innerHTML='<div style="flex:1">'+
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
     '<div style="font-family:\'Playfair Display\',serif;font-size:16px;font-weight:600;color:#fff">'+act.titulo+'</div>'+
+    (esEval?'<div style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.03em;flex-shrink:0">🔴 EVALUABLE</div>':'')+
+    '</div>'+
     '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">'+pregs.length+' preguntas'+
     (act.penalizacion>0?' · Penalización −'+act.penalizacion+' por error':' · Sin penalización')+
-    (esEval?' · Actividad evaluable':' · Libre repetición')+'</div></div>'+
+    (esEval?' · Los resultados se bloquean hasta la entrega':' · Libre repetición')+'</div></div>'+
     (act.tiempoMin?'<div id="act-timer" style="background:rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;font-family:IBM Plex Mono,monospace;font-size:14px;font-weight:700;color:#fff">⏱ --:--</div>':'')+
     '<button id="btn-entregar-header" style="background:#22c55e;border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0">📤 Entregar</button>'+
     '<button onclick="document.getElementById(\'modal-actividad-run\').remove();document.body.style.overflow=\'\'" '+
@@ -9102,7 +9112,7 @@ function abrirModalActividad(act, pregs, esEval, udId){
         if(pct!==null) pCard.style.borderColor='var(--green)';
         else pCard.style.borderColor='var(--amber)';
         actualizarProgreso();
-      }, act && act.pesosCalculo ? act.pesosCalculo : null);
+      }, act && act.pesosCalculo ? act.pesosCalculo : null, esEval);
     } else if(p.tipo==='test'||p.tipo==='vf'){
       // Opciones clicables
       var letters=['A','B','C','D'];
