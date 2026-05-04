@@ -11624,12 +11624,15 @@ async function verDetalleEntrega(entregaId){
   var {data:ent, error:entErr} = await supa.from('entregas').select('*, actividades(titulo,nivel,peso_calculo,peso_interpretacion,peso_teoria,simuladores(nombre,codigo))').eq('id',entregaId).single();
   console.log('query done, ent:', ent ? 'OK id='+ent.id : 'NULL', 'err:', entErr);
   console.log('verDetalleEntrega query result:', ent ? 'OK' : 'NULL', entErr ? entErr.message : 'no error');
+  console.log('step1: getting profile for', ent ? ent.alumno_id : 'null');
   // Get alumno profile separately
   var alumnoNome = '—'; var alumnoEmail = '';
   if(ent && ent.alumno_id){
     var {data:alumnoPerf} = await supa.from('perfiles').select('nombre,email').eq('id',ent.alumno_id).single();
+    console.log('step2: profile=', alumnoPerf ? alumnoPerf.nombre : 'null');
     if(alumnoPerf){ alumnoNome=alumnoPerf.nombre; alumnoEmail=alumnoPerf.email; }
   }
+  console.log('step3: building HTML');
   if(!ent){ flash('No se encontró la entrega: '+(entErr?entErr.message:'unknown'),'#dc2626'); return; }
 
   var act   = ent.actividades || {};
