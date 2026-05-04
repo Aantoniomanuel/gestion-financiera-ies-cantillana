@@ -11192,6 +11192,7 @@ function fmtF(d){
 async function verDetalleAlumno(aid){
   var grid=document.getElementById('alumnos-grid');
   if(!grid)return;
+  grid.style.cssText='';
   grid.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
 
   var [{data:p},{data:ej},{data:ac},{data:sims},{data:entregas}]=await Promise.all([
@@ -11206,135 +11207,114 @@ async function verDetalleAlumno(aid){
   var n=(ej||[]).length;
   var med=n>0?Math.round((ej||[]).reduce(function(s,e){return s+(e.puntuacion||0);},0)/n):null;
   var mc=med===null?'#9ca3af':med>=70?'var(--green)':med>=50?'var(--amber)':'var(--red)';
+  var av=p&&p.avatar_url?'<img src="'+p.avatar_url+'" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+    :'<div style="width:48px;height:48px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0">'+((p&&p.nombre)||'?')[0].toUpperCase()+'</div>';
 
-  var html='<button class="btn-sm" onclick="renderAlumnos()" style="margin-bottom:1.25rem">← Volver al grupo</button>';
+  var html='<button class="btn-sm" onclick="renderAlumnos()" style="margin-bottom:1rem">← Volver</button>';
 
-  // ── Cabecera alumno ──────────────────────────────────
-  var av=p&&p.avatar_url
-    ?'<img src="'+p.avatar_url+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover">'
-    :'<div style="width:56px;height:56px;border-radius:50%;background:#1a2744;color:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700">'+((p&&p.nombre)||'?')[0].toUpperCase()+'</div>';
-
-  html+='<div class="card" style="margin-bottom:1rem"><div class="card-body">'+
-    '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">'+
+  // Cabecera
+  html+='<div class="card" style="margin-bottom:1rem"><div class="card-body" style="padding:1rem">'+
+    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">'+
       av+
-      '<div style="flex:1;min-width:180px">'+
-        '<div style="font-size:1.1rem;font-weight:700;color:#1a2744">'+(p?p.nombre:'')+'</div>'+
-        '<div style="font-size:12px;color:#9ca3af">'+(p?p.email:'')+'</div>'+
-      '</div>'+
-      '<div style="display:flex;gap:2rem;flex-wrap:wrap">'+
-        '<div style="text-align:center"><div style="font-size:1.8rem;font-weight:700;color:'+mc+'">'+(med!==null?med+'%':'—')+'</div><div style="font-size:11px;color:#9ca3af">Media</div></div>'+
-        '<div style="text-align:center"><div style="font-size:1.8rem;font-weight:700;color:#1a2744">'+n+'</div><div style="font-size:11px;color:#9ca3af">Ejercicios</div></div>'+
-        '<div style="text-align:center"><div style="font-size:1.8rem;font-weight:700;color:#1a2744">'+(ac?ac.length:0)+'</div><div style="font-size:11px;color:#9ca3af">Accesos</div></div>'+
-        '<div style="text-align:center"><div style="font-size:1.8rem;font-weight:700;color:#1a2744">'+(entregas?entregas.length:0)+'</div><div style="font-size:11px;color:#9ca3af">Entregas</div></div>'+
-      '</div>'+
+      '<div><div style="font-weight:700;color:#1a2744;font-size:15px">'+(p?p.nombre:'')+'</div>'+
+      '<div style="font-size:12px;color:#9ca3af">'+(p?p.email:'')+'</div></div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">'+
+      '<div style="background:#f9f8f5;padding:10px;border-radius:8px"><div style="font-size:1.4rem;font-weight:700;color:'+mc+'">'+(med!==null?med+'%':'—')+'</div><div style="font-size:11px;color:#9ca3af">Media</div></div>'+
+      '<div style="background:#f9f8f5;padding:10px;border-radius:8px"><div style="font-size:1.4rem;font-weight:700;color:#1a2744">'+n+'</div><div style="font-size:11px;color:#9ca3af">Ejercicios</div></div>'+
+      '<div style="background:#f9f8f5;padding:10px;border-radius:8px"><div style="font-size:1.4rem;font-weight:700;color:#1a2744">'+(ac?ac.length:0)+'</div><div style="font-size:11px;color:#9ca3af">Accesos</div></div>'+
+      '<div style="background:#f9f8f5;padding:10px;border-radius:8px"><div style="font-size:1.4rem;font-weight:700;color:#1a2744">'+(entregas?entregas.length:0)+'</div><div style="font-size:11px;color:#9ca3af">Entregas</div></div>'+
     '</div>'+
   '</div></div>';
 
-  // ── Actividades evaluables ───────────────────────────
-  html+='<div class="card" style="margin-bottom:1rem">'+
-    '<div class="card-header"><div class="card-title">📝 Actividades evaluables</div></div>'+
-    '<div class="card-body" style="padding:0">';
+  // Actividades evaluables
+  html+='<div class="card" style="margin-bottom:1rem"><div class="card-header"><div class="card-title">📝 Actividades evaluables</div></div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
+    '<thead><tr style="background:#f9f8f5;border-bottom:2px solid #e2ddd4">'+
+    '<th style="padding:10px 12px;text-align:left;font-weight:700;color:#1a2744">Actividad</th>'+
+    '<th style="padding:10px 8px;text-align:left;font-weight:700;color:#1a2744">Simulador</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Niv.</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Auto.</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Nota</th>'+
+    '<th style="padding:10px 8px;font-weight:700;color:#1a2744">Comentario</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744"></th>'+
+    '</tr></thead><tbody>';
 
   if(!entregas||!entregas.length){
-    html+='<div style="text-align:center;padding:1.5rem;color:#9ca3af;font-size:13px">Sin entregas todavía.</div>';
+    html+='<tr><td colspan="7" style="padding:1.5rem;text-align:center;color:#9ca3af">Sin entregas.</td></tr>';
   } else {
-    html+='<table class="dt" style="width:100%"><thead><tr>'+
-      '<th style="text-align:left;padding:10px 14px">Actividad</th>'+
-      '<th style="min-width:100px">Simulador</th>'+
-      '<th style="min-width:60px">Nivel</th>'+
-      '<th style="min-width:120px">Entregada</th>'+
-      '<th style="min-width:80px">Punt. auto.</th>'+
-      '<th style="min-width:90px">Nota</th>'+
-      '<th style="min-width:160px">Comentario</th>'+
-      '<th style="min-width:80px"></th>'+
-      '</tr></thead><tbody>';
     entregas.forEach(function(ent){
-      var act=ent.actividades||{};
-      var sim=act.simuladores||{};
-      var entregada=ent.entregada_at?new Date(ent.entregada_at):null;
-      var pAuto=ent.puntuacion_automatica;
-      var pDoc=ent.puntuacion_docente;
-      var autoCol=pAuto===null?'#9ca3af':pAuto>=70?'var(--green)':pAuto>=50?'var(--amber)':'var(--red)';
+      var act=ent.actividades||{};var sim=act.simuladores||{};
+      var pAuto=ent.puntuacion_automatica;var pDoc=ent.puntuacion_docente;
+      var autoCol=pAuto===null?'#9ca3af':pAuto>=70?'#16a34a':pAuto>=50?'#d97706':'#dc2626';
       var nivelLabel={basico:'⭐',medio:'⭐⭐',avanzado:'⭐⭐⭐'}[act.nivel]||'—';
-      html+='<tr>'+
-        '<td style="padding:10px 14px;font-weight:600;font-size:13px">'+(act.titulo||'—')+'</td>'+
-        '<td style="font-size:12px;color:#9ca3af">'+(sim.nombre||'—')+'</td>'+
-        '<td style="text-align:center">'+nivelLabel+'</td>'+
-        '<td style="font-size:12px;color:#9ca3af">'+(entregada?entregada.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—')+'</td>'+
-        '<td style="text-align:center;font-weight:700;color:'+autoCol+'">'+(pAuto!==null?pAuto+'%':'—')+'</td>'+
-        '<td style="text-align:center">'+
-          '<input type="number" min="0" max="10" step="0.1" placeholder="—" value="'+(pDoc!==null?pDoc:'')+'" id="nota-'+ent.id+'" style="width:60px;text-align:center;padding:4px;border:1px solid #d1ccc6;border-radius:6px;font-size:13px">'+
-        '</td>'+
-        '<td>'+
-          '<input type="text" placeholder="Comentario..." value="'+(ent.comentario_docente||'')+'" id="com-'+ent.id+'" style="width:100%;padding:4px 8px;border:1px solid #d1ccc6;border-radius:6px;font-size:12px">'+
-        '</td>'+
-        '<td style="text-align:center;white-space:nowrap">'+
-          '<button class="btn-sm btn-navy" data-id="'+ent.id+'" onclick="guardarNota(this.dataset.id)" style="font-size:11px;display:block;width:100%;margin-bottom:3px">💾 Guardar</button>'+
-          '<button class="btn-sm" data-id="'+ent.id+'" onclick="verDetalleEntrega(this.dataset.id)" style="font-size:11px;display:block;width:100%">📄 Ver</button>'+
+      var entregada=ent.entregada_at?new Date(ent.entregada_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+      html+='<tr style="border-bottom:1px solid #f2f0eb">'+
+        '<td style="padding:8px 12px;font-weight:600">'+(act.titulo||'—')+'<br><span style="font-weight:400;font-size:11px;color:#9ca3af">'+entregada+'</span></td>'+
+        '<td style="padding:8px;font-size:12px;color:#9ca3af">'+(sim.nombre||'—')+'</td>'+
+        '<td style="padding:8px;text-align:center">'+nivelLabel+'</td>'+
+        '<td style="padding:8px;text-align:center;font-weight:700;color:'+autoCol+'">'+(pAuto!==null?pAuto+'%':'—')+'</td>'+
+        '<td style="padding:8px;text-align:center"><input type="number" min="0" max="10" step="0.1" placeholder="—" value="'+(pDoc!==null?pDoc:'')+'" id="nota-'+ent.id+'" style="width:55px;text-align:center;padding:3px;border:1px solid #d1ccc6;border-radius:6px;font-size:12px"></td>'+
+        '<td style="padding:8px"><input type="text" placeholder="Comentario..." value="'+(ent.comentario_docente||'')+'" id="com-'+ent.id+'" style="width:100%;min-width:120px;padding:3px 6px;border:1px solid #d1ccc6;border-radius:6px;font-size:12px"></td>'+
+        '<td style="padding:8px;text-align:center;white-space:nowrap">'+
+          '<button class="btn-sm btn-navy" data-id="'+ent.id+'" onclick="guardarNota(this.dataset.id)" style="font-size:11px;display:block;width:100%;margin-bottom:3px">💾</button>'+
+          '<button class="btn-sm" data-id="'+ent.id+'" onclick="verDetalleEntrega(this.dataset.id)" style="font-size:11px;display:block;width:100%">📄</button>'+
         '</td>'+
       '</tr>';
     });
-    html+='</tbody></table>';
   }
-  html+='</div></div>';
+  html+='</tbody></table></div></div>';
 
-  // ── Ejercicios por simulador ─────────────────────────
+  // Ejercicios por simulador
   var porSim={};(ej||[]).forEach(function(e){if(!porSim[e.simulador_id])porSim[e.simulador_id]=[];porSim[e.simulador_id].push(e);});
-
-  html+='<div class="card" style="margin-bottom:1rem">'+
-    '<div class="card-header"><div class="card-title">📊 Ejercicios por simulador</div></div>'+
-    '<div class="card-body" style="padding:0">';
+  html+='<div class="card" style="margin-bottom:1rem"><div class="card-header"><div class="card-title">📊 Ejercicios por simulador</div></div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
+    '<thead><tr style="background:#f9f8f5;border-bottom:2px solid #e2ddd4">'+
+    '<th style="padding:10px 12px;text-align:left;font-weight:700;color:#1a2744">Simulador</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Ejers.</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Media</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Nivel</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Último</th>'+
+    '</tr></thead><tbody>';
 
   if(!Object.keys(porSim).length){
-    html+='<div style="text-align:center;padding:1.5rem;color:#9ca3af;font-size:13px">Sin ejercicios realizados.</div>';
+    html+='<tr><td colspan="5" style="padding:1.5rem;text-align:center;color:#9ca3af">Sin ejercicios.</td></tr>';
   } else {
-    html+='<table class="dt" style="width:100%"><thead><tr>'+
-      '<th style="text-align:left;padding:10px 14px">Simulador</th>'+
-      '<th style="min-width:80px">Ejercicios</th>'+
-      '<th style="min-width:80px">Media</th>'+
-      '<th style="min-width:100px">Nivel actual</th>'+
-      '<th style="min-width:120px">Último</th>'+
-      '</tr></thead><tbody>';
     Object.keys(porSim).forEach(function(sid){
-      var lista=porSim[sid];
-      var s=sm[sid]||{nombre:'—'};
+      var lista=porSim[sid];var s=sm[sid]||{nombre:'—'};
       var med2=Math.round(lista.reduce(function(a,e){return a+(e.puntuacion||0);},0)/lista.length);
-      var mc2=med2>=70?'var(--green)':med2>=50?'var(--amber)':'var(--red)';
-      html+='<tr>'+
-        '<td style="padding:10px 14px;font-weight:600;font-size:13px">'+s.nombre+'</td>'+
-        '<td style="text-align:center">'+lista.length+'</td>'+
-        '<td style="text-align:center;font-weight:700;color:'+mc2+'">'+med2+'%</td>'+
-        '<td style="text-align:center;font-size:12px">'+lista[0].nivel+'</td>'+
-        '<td style="font-size:12px;color:#9ca3af">'+fmtF(new Date(lista[0].created_at))+'</td>'+
+      var mc2=med2>=70?'#16a34a':med2>=50?'#d97706':'#dc2626';
+      html+='<tr style="border-bottom:1px solid #f2f0eb">'+
+        '<td style="padding:8px 12px;font-weight:600">'+s.nombre+'</td>'+
+        '<td style="padding:8px;text-align:center">'+lista.length+'</td>'+
+        '<td style="padding:8px;text-align:center;font-weight:700;color:'+mc2+'">'+med2+'%</td>'+
+        '<td style="padding:8px;text-align:center;font-size:12px">'+lista[0].nivel+'</td>'+
+        '<td style="padding:8px;text-align:center;font-size:12px;color:#9ca3af">'+fmtF(new Date(lista[0].created_at))+'</td>'+
       '</tr>';
     });
-    html+='</tbody></table>';
   }
-  html+='</div></div>';
+  html+='</tbody></table></div></div>';
 
-  // ── Historial de accesos ────────────────────────────
-  html+='<div class="card">'+
-    '<div class="card-header"><div class="card-title">🔑 Historial de accesos</div>'+
-    '<div style="font-size:12px;color:#9ca3af">Últimos 20 accesos</div></div>'+
-    '<div class="card-body" style="padding:0">';
+  // Accesos
+  html+='<div class="card"><div class="card-header"><div class="card-title">🔑 Accesos recientes</div></div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
+    '<thead><tr style="background:#f9f8f5;border-bottom:2px solid #e2ddd4">'+
+    '<th style="padding:10px 12px;text-align:left;font-weight:700;color:#1a2744">Fecha y hora</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Hace</th>'+
+    '</tr></thead><tbody>';
 
   if(!ac||!ac.length){
-    html+='<div style="text-align:center;padding:1.5rem;color:#9ca3af;font-size:13px">Sin accesos registrados.</div>';
+    html+='<tr><td colspan="2" style="padding:1.5rem;text-align:center;color:#9ca3af">Sin accesos.</td></tr>';
   } else {
-    html+='<table class="dt" style="width:100%"><thead><tr>'+
-      '<th style="text-align:left;padding:10px 14px">Fecha y hora</th>'+
-      '<th style="min-width:100px">Hace</th>'+
-      '</tr></thead><tbody>';
     ac.forEach(function(a){
       var d=new Date(a.created_at);
-      html+='<tr>'+
-        '<td style="padding:10px 14px;font-size:13px">'+d.toLocaleDateString('es-ES',{weekday:'long',day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</td>'+
-        '<td style="text-align:center;font-size:12px;color:#9ca3af">'+fmtF(d)+'</td>'+
+      html+='<tr style="border-bottom:1px solid #f2f0eb">'+
+        '<td style="padding:8px 12px">'+d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</td>'+
+        '<td style="padding:8px;text-align:center;color:#9ca3af">'+fmtF(d)+'</td>'+
       '</tr>';
     });
-    html+='</tbody></table>';
   }
-  html+='</div></div>';
+  html+='</tbody></table></div></div>';
 
   grid.innerHTML=html;
 }
