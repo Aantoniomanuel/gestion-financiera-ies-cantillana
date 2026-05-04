@@ -11619,6 +11619,7 @@ async function iniciarDesdePanel(btn){
 
 // ── Ver detalle de entrega + PDF ──────────────────────
 async function verDetalleEntrega(entregaId){
+  console.log('verDetalleEntrega called with:', entregaId);
   var {data:ent} = await supa.from('entregas').select('*, actividades(titulo,nivel,peso_calculo,peso_interpretacion,peso_teoria,simuladores(nombre,codigo))').eq('id',entregaId).single();
   // Get alumno profile separately
   var alumnoNome = '—'; var alumnoEmail = '';
