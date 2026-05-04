@@ -11620,6 +11620,7 @@ async function iniciarDesdePanel(btn){
 // ── Ver detalle de entrega + PDF ──────────────────────
 async function verDetalleEntrega(entregaId){
   console.log('verDetalleEntrega called with:', entregaId);
+  try{
   var {data:ent, error:entErr} = await supa.from('entregas').select('*, actividades(titulo,nivel,peso_calculo,peso_interpretacion,peso_teoria,simuladores(nombre,codigo))').eq('id',entregaId).single();
   console.log('verDetalleEntrega query result:', ent ? 'OK' : 'NULL', entErr ? entErr.message : 'no error');
   // Get alumno profile separately
@@ -11729,6 +11730,10 @@ async function verDetalleEntrega(entregaId){
     html+
   '</div>';
   document.body.appendChild(modal);
+  }catch(err){
+    console.error('verDetalleEntrega error:', err);
+    flash('Error: '+err.message,'#dc2626');
+  }
 }
 
 function cerrarDetalleModal(){ var m=document.getElementById('detalle-modal'); if(m)m.remove(); }
