@@ -345,7 +345,7 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
 
     <div class="page" id="page-alumnos">
       <div class="ph"><div><h1 class="pt">Mis Alumnos</h1><p class="ps">Los alumnos aparecen cuando acceden · <span id="alumnos-sub"></span></p></div><button class="btn btn-sm" onclick="renderAlumnos()" style="font-size:12px">↻ Actualizar</button></div>
-      <div id="alumnos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:11px"></div>
+      <div id="alumnos-grid"></div>
     </div>
     <div class="page" id="page-evaluacion">
       <div class="ph"><div><h1 class="pt">Evaluación RA/CE</h1><p class="ps">Resultados de Aprendizaje y Criterios de Evaluación</p></div></div>
@@ -11124,6 +11124,8 @@ window.addEventListener('message',async function(e){
 function renderAlumnos(){
   var grid=document.getElementById('alumnos-grid');
   if(!grid)return;
+  // Switch to single column for detail view
+  grid.style.cssText = 'max-width:900px;margin:0 auto;';
   grid.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#9ca3af;gap:10px"><div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>Cargando…</div>';
   if(!USUARIO_ACTUAL||USUARIO_ACTUAL.rol!=='docente'){
     grid.innerHTML='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem">Solo el docente puede ver esta sección.</div></div>';
@@ -11150,7 +11152,7 @@ async function cargarPanelAlumnos(grid){
     var totalEj=(ejercicios||[]).length;
     var mediaG=totalEj>0?Math.round((ejercicios||[]).reduce(function(s,e){return s+(e.puntuacion||0);},0)/totalEj):0;
     var activos=new Set((ejercicios||[]).map(function(e){return e.alumno_id;})).size;
-    var html='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">';
+    var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem">';
     html+=mkSC('👥',perfs.length,'Alumnos registrados','');
     html+=mkSC('✅',activos,'Con ejercicios','pos');
     html+=mkSC('📊',mediaG+'%','Media global',mediaG>=70?'pos':mediaG>=50?'':'neg');
@@ -11527,6 +11529,8 @@ async function renderMisActividades(){
     });
     var completadas = (entregas||[]).filter(function(e){ return e.entregada_at; });
 
+    var grid2 = document.getElementById('alumnos-grid');
+    if(grid2) grid2.style.cssText = '';
     var html = '';
 
     // ── Pendientes ────────────────────────────────────
