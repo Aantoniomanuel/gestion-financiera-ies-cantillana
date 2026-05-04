@@ -6208,7 +6208,7 @@ function renderMapaSVG(nodos, conexiones, modoAlumno, respuestas, onRespuesta){
   return svg;
 }
 
-function renderEjercicioMapa(p, contenedor, onCorregir){
+function renderEjercicioMapa(p, contenedor, onCorregir, esEval){
   contenedor.innerHTML='';
   var nodos=p.nodos||[]; var conexiones=p.conexiones||[];
   var respuestas={}; var ocultos=nodos.filter(function(n){ return n.oculto; });
@@ -6232,18 +6232,24 @@ function renderEjercicioMapa(p, contenedor, onCorregir){
   contenedor.appendChild(grid);
 
   var btnCorr=document.createElement('button'); btnCorr.className='btn btn-p'; btnCorr.style.cssText='width:100%';
-  btnCorr.textContent='✓ Comprobar mapa';
-  btnCorr.onclick=function(){
-    var ok=0;
-    ocultos.forEach(function(n){ if((respuestas[n.id]||'').trim().toLowerCase()===n.texto.trim().toLowerCase()) ok++; });
-    var pct=ocultos.length ? Math.round(ok/ocultos.length*100) : 100;
-    refresh();
-    var res=document.createElement('div');
-    res.style.cssText='margin-top:12px;padding:12px 16px;border-radius:var(--r);font-weight:600;background:'+(pct>=70?'var(--green-bg)':'var(--red-bg)')+';color:'+(pct>=70?'var(--green)':'var(--red)');
-    res.innerHTML='Resultado: <strong>'+ok+' / '+ocultos.length+'</strong> nodos correctos ('+pct+'%)';
-    contenedor.appendChild(res);
-    if(onCorregir) onCorregir(pct/10);
-  };
+  if(esEval){
+    btnCorr.textContent='🔒 Corrección bloqueada — entrega el ejercicio para ver el resultado';
+    btnCorr.disabled=true;
+    btnCorr.style.cssText='width:100%;padding:12px;font-size:14px;background:#6b7280;color:#fff;border:none;border-radius:var(--r);cursor:not-allowed;opacity:.8';
+  } else {
+    btnCorr.textContent='✓ Comprobar mapa';
+    btnCorr.onclick=function(){
+      var ok=0;
+      ocultos.forEach(function(n){ if((respuestas[n.id]||'').trim().toLowerCase()===n.texto.trim().toLowerCase()) ok++; });
+      var pct=ocultos.length ? Math.round(ok/ocultos.length*100) : 100;
+      refresh();
+      var res=document.createElement('div');
+      res.style.cssText='margin-top:12px;padding:12px 16px;border-radius:var(--r);font-weight:600;background:'+(pct>=70?'var(--green-bg)':'var(--red-bg)')+';color:'+(pct>=70?'var(--green)':'var(--red)');
+      res.innerHTML='Resultado: <strong>'+ok+' / '+ocultos.length+'</strong> nodos correctos ('+pct+'%)';
+      contenedor.appendChild(res);
+      if(onCorregir) onCorregir(pct/10);
+    };
+  }
   contenedor.appendChild(btnCorr);
   refresh();
 }
@@ -9103,7 +9109,7 @@ function abrirModalActividad(act, pregs, esEval, udId){
         respuestas[p.id]={tipo:'mapa', pct:pct};
         actualizarProgreso();
         pCard.style.borderColor='var(--green)';
-      });
+      }, esEval);
     } else if(p.tipo==='calculo'||p.tipo==='formulario'){
       var calcCont=document.createElement('div');
       pCard.appendChild(calcCont);
