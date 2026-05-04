@@ -10553,15 +10553,12 @@ window.addEventListener('load', function(){
   setTimeout(function(){ toggleGroup('ud'); }, 100);
 });
 </script>
-<!-- Input de archivo permanente para importar Excel — no se destruye al re-renderizar -->
-<input type="file" id="excel-import-input" accept=".xlsx,.xls" style="display:none">
-
 <!-- Calculadora Científica Flotante -->
 <button id="calc-fab" onclick="toggleCalcFinanciera()" title="Calculadora científica"
   style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#1a2744;color:#c9a84c;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:1500;display:flex;align-items:center;justify-content:center;transition:transform .15s">
   🧮
 </button>
-<div id="calc-overlay" style="display:none;position:fixed;bottom:88px;right:24px;width:300px;max-height:90vh;overflow-y:auto;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:1500">
+<div id="calc-overlay" style="display:none;position:fixed;bottom:88px;right:24px;width:300px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:1500;cursor:default">
 </div>
 
 <!-- Asistente Virtual IA -->
@@ -10569,13 +10566,19 @@ window.addEventListener('load', function(){
   style="position:fixed;bottom:24px;right:88px;width:52px;height:52px;border-radius:50%;background:#0f172a;color:#22c55e;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:1500;display:flex;align-items:center;justify-content:center;transition:transform .15s">
   🤖
 </button>
-<div id="ai-overlay" style="display:none;position:fixed;bottom:88px;right:88px;width:340px;height:480px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:1500;background:#fff;border:1px solid #e2e8f0;display:none;flex-direction:column">
+<div id="ai-overlay" style="display:none;position:fixed;bottom:88px;right:88px;width:340px;height:480px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:1500;background:#fff;border:1px solid #e2e8f0;flex-direction:column">
 </div>
 
 <script>
-var calcVisible=false;
-var _calcKbh=null;
+/* ═══════════════════════════════════════════════════════
+   CALCULADORA CIENTÍFICA — draggable + compact
+═══════════════════════════════════════════════════════ */
+// ⬇ El profesor puede poner aquí la API key de Claude para el asistente
+var CLAUDE_API_KEY = '';
+
+var calcVisible=false, _calcKbh=null, _calcCompact=false;
 var _CC={e:'',wasResult:false,deg:true};
+var _calcDrag={on:false,ox:0,oy:0,startX:0,startY:0};
 
 function _cEval(s){
   if(!s)return null;
@@ -10638,6 +10641,36 @@ function calcBtn(v){
   _cUpd();
 }
 
+function _calcToggleCompact(){
+  _calcCompact=!_calcCompact;
+  var ov=document.getElementById('calc-overlay');
+  if(ov){ov.innerHTML='';renderCalcFinanciera(ov);}
+}
+
+function _calcStartDrag(e){
+  var ov=document.getElementById('calc-overlay');
+  if(!ov)return;
+  var rect=ov.getBoundingClientRect();
+  // Switch from bottom/right to top/left positioning
+  ov.style.bottom='auto';ov.style.right='auto';
+  ov.style.top=rect.top+'px';ov.style.left=rect.left+'px';
+  _calcDrag.on=true;
+  _calcDrag.startX=e.clientX-rect.left;
+  _calcDrag.startY=e.clientY-rect.top;
+  e.preventDefault();
+}
+
+document.addEventListener('mousemove',function(e){
+  if(!_calcDrag.on)return;
+  var ov=document.getElementById('calc-overlay');
+  if(!ov)return;
+  var x=e.clientX-_calcDrag.startX, y=e.clientY-_calcDrag.startY;
+  x=Math.max(0,Math.min(x,window.innerWidth-ov.offsetWidth));
+  y=Math.max(0,Math.min(y,window.innerHeight-ov.offsetHeight));
+  ov.style.left=x+'px';ov.style.top=y+'px';
+});
+document.addEventListener('mouseup',function(){_calcDrag.on=false;});
+
 function toggleCalcFinanciera(){
   calcVisible=!calcVisible;
   var ov=document.getElementById('calc-overlay');
@@ -10670,34 +10703,45 @@ function toggleCalcFinanciera(){
 }
 
 function renderCalcFinanciera(root){
-  root.style.cssText='border-radius:16px;overflow:hidden;width:300px;font-family:Inter,sans-serif;user-select:none';
-  var btns=[
+  var compact=_calcCompact;
+  root.style.cssText='border-radius:16px;overflow:hidden;width:'+(compact?'220px':'300px')+';font-family:Inter,sans-serif;user-select:none;background:#0f172a';
+  var btnsAll=[
     [{l:'AC',v:'AC',bg:'#374151',fc:'#f87171'},{l:'( )',v:'(',bg:'#374151'},{l:')',v:')',bg:'#374151'},{l:'÷',v:'÷',bg:'#c9a84c',fc:'#0f172a'}],
-    [{l:'sin',v:'sin(',bg:'#1e3a5f',sz:12},{l:'cos',v:'cos(',bg:'#1e3a5f',sz:12},{l:'tan',v:'tan(',bg:'#1e3a5f',sz:12},{l:'√',v:'√(',bg:'#1e3a5f',sz:13}],
+    [{l:'sin',v:'sin(',bg:'#1e3a5f',sz:compact?10:12},{l:'cos',v:'cos(',bg:'#1e3a5f',sz:compact?10:12},{l:'tan',v:'tan(',bg:'#1e3a5f',sz:compact?10:12},{l:'√',v:'√(',bg:'#1e3a5f',sz:compact?11:13}],
     [{l:'7',v:'7'},{l:'8',v:'8'},{l:'9',v:'9'},{l:'×',v:'×',bg:'#c9a84c',fc:'#0f172a'}],
     [{l:'4',v:'4'},{l:'5',v:'5'},{l:'6',v:'6'},{l:'−',v:'−',bg:'#c9a84c',fc:'#0f172a'}],
     [{l:'1',v:'1'},{l:'2',v:'2'},{l:'3',v:'3'},{l:'+',v:'+',bg:'#c9a84c',fc:'#0f172a'}],
-    [{l:'log',v:'log(',bg:'#1e3a5f',sz:12},{l:'ln',v:'ln(',bg:'#1e3a5f',sz:12},{l:'x²',v:'x²',bg:'#1e3a5f',sz:12},{l:'xʸ',v:'xʸ',bg:'#1e3a5f',sz:12}],
+    [{l:'log',v:'log(',bg:'#1e3a5f',sz:compact?10:12},{l:'ln',v:'ln(',bg:'#1e3a5f',sz:compact?10:12},{l:'x²',v:'x²',bg:'#1e3a5f',sz:compact?10:12},{l:'xʸ',v:'xʸ',bg:'#1e3a5f',sz:compact?10:12}],
     [{l:'0',v:'0'},{l:'.',v:'.'},{l:'⌫',v:'⌫',bg:'#374151'},{l:'=',v:'=',bg:'#c9a84c',fc:'#0f172a'}],
     [{l:'π',v:'π',bg:'#1e3a5f'},{l:'e',v:'e',bg:'#1e3a5f'},{l:'±',v:'±',bg:'#374151'},{l:'%',v:'%',bg:'#374151'}]
   ];
-  var h='<div style="background:#0f172a;padding:14px 14px 8px">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-  h+='<span style="font-size:11px;color:rgba(255,255,255,.4)">Calculadora Científica</span>';
+  var btns=compact?btnsAll.filter(function(_,i){return i!==1&&i!==5&&i!==7;}):btnsAll;
+  var pad=compact?'10px 10px 8px':'14px 14px 8px';
+  var h='<div style="background:#0f172a;padding:'+pad+'">';
+  // Drag handle + controls
+  h+='<div id="calc-drag-handle" onmousedown="_calcStartDrag(event)" ';
+  h+='style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:grab">';
+  h+='<span style="font-size:10px;color:rgba(255,255,255,.3);user-select:none">⠿ Calculadora</span>';
+  h+='<div style="display:flex;gap:6px;align-items:center">';
   h+='<button id="cx-ang" onclick="calcBtn(_CC.deg?\'RAD\':\'DEG\')" ';
-  h+='style="background:rgba(255,255,255,.12);border:none;color:#c9a84c;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;cursor:pointer">DEG</button>';
-  h+='</div>';
-  h+='<div style="background:#030712;border-radius:10px;padding:10px 12px;min-height:66px">';
-  h+='<div id="cx-e" style="font-size:12px;color:rgba(255,255,255,.4);text-align:right;min-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>';
-  h+='<div id="cx-r" style="font-size:30px;color:#c9a84c;text-align:right;font-family:\'IBM Plex Mono\',monospace;margin-top:2px">0</div>';
+  h+='style="background:rgba(255,255,255,.12);border:none;color:#c9a84c;font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px;cursor:pointer">DEG</button>';
+  h+='<button onclick="_calcToggleCompact()" title="'+(compact?'Ampliar':'Compactar')+'" ';
+  h+='style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.5);font-size:10px;padding:2px 6px;border-radius:6px;cursor:pointer">'+(compact?'⤢':'⤡')+'</button>';
   h+='</div></div>';
-  h+='<div style="background:#1f2937;padding:8px;display:grid;gap:5px">';
+  // Display
+  var dh=compact?'48px':'66px', rf=compact?'22px':'30px';
+  h+='<div style="background:#030712;border-radius:10px;padding:8px 10px;min-height:'+dh+'">';
+  h+='<div id="cx-e" style="font-size:11px;color:rgba(255,255,255,.4);text-align:right;min-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>';
+  h+='<div id="cx-r" style="font-size:'+rf+';color:#c9a84c;text-align:right;font-family:\'IBM Plex Mono\',monospace;margin-top:1px">0</div>';
+  h+='</div></div>';
+  var gap=compact?'4px':'5px', bp=compact?'10px 2px':'13px 4px';
+  h+='<div style="background:#1f2937;padding:'+gap+';display:grid;gap:'+gap+'">';
   btns.forEach(function(row){
-    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">';
+    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:'+gap+'">';
     row.forEach(function(b){
-      var bg=b.bg||'#374151',fc=b.fc||'#fff',sz=b.sz||16;
-      h+='<button onclick="calcBtn(\''+b.v.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" ';
-      h+='style="background:'+bg+';color:'+fc+';border:none;border-radius:9px;padding:13px 4px;cursor:pointer;font-size:'+sz+'px;font-weight:600;transition:opacity .1s" ';
+      var bg=b.bg||'#374151',fc=b.fc||'#fff',sz=b.sz||(compact?13:16);
+      h+='<button onclick="calcBtn(\''+b.v.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')\" ';
+      h+='style="background:'+bg+';color:'+fc+';border:none;border-radius:8px;padding:'+bp+';cursor:pointer;font-size:'+sz+'px;font-weight:600;transition:opacity .1s" ';
       h+='onmousedown="this.style.opacity=\'.6\'" onmouseup="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'1\'">'+b.l+'</button>';
     });
     h+='</div>';
@@ -10706,7 +10750,9 @@ function renderCalcFinanciera(root){
   root.innerHTML=h;
 }
 
-/* ── ASISTENTE VIRTUAL IA ─────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   ASISTENTE VIRTUAL IA — libre, sin config para alumnos
+═══════════════════════════════════════════════════════ */
 var _aiVis=false;
 
 function toggleAI(){
@@ -10723,26 +10769,46 @@ function toggleAI(){
   }
 }
 
+function _getAIKey(){
+  return CLAUDE_API_KEY || localStorage.getItem('gf_ai_key') || '';
+}
+
 function _renderAI(root){
-  var key=localStorage.getItem('gf_ai_key')||'';
+  var key=_getAIKey();
   var msgs=JSON.parse(localStorage.getItem('gf_ai_chat')||'[]');
   root.style.cssText='display:flex;flex-direction:column;height:480px;border-radius:16px;overflow:hidden;font-family:Inter,sans-serif;background:#fff';
+  var isProf=(typeof ROL!=='undefined'&&ROL==='profesor');
   var h='<div style="background:#0f172a;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0">';
   h+='<div style="width:32px;height:32px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;font-size:16px">🤖</div>';
   h+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff">Asistente IA</div>';
   h+='<div style="font-size:10px;color:rgba(255,255,255,.5)">Gestión Financiera · IES Cantillana</div></div>';
-  h+='<button onclick="toggleAI()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:16px;cursor:pointer;padding:4px">✕</button>';
+  if(isProf&&!key){
+    h+='<button onclick="_aiSetup()" title="Configurar API key" style="background:rgba(255,165,0,.2);border:1px solid rgba(255,165,0,.4);color:#fbbf24;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer">⚙ Config</button>';
+  } else if(isProf){
+    h+='<button onclick="_aiSetup()" title="Cambiar API key" style="background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.4);font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer">⚙</button>';
+  }
+  h+='<button onclick="toggleAI()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:16px;cursor:pointer;padding:4px 4px 4px 8px">✕</button>';
   h+='</div>';
   if(!key){
-    h+='<div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center">';
-    h+='<div style="font-size:32px">🔑</div>';
-    h+='<div style="font-size:13px;color:#374151;font-weight:600">Configura tu API Key de Claude</div>';
-    h+='<div style="font-size:12px;color:#6b7280">Introduce tu clave de la API de Anthropic para activar el asistente</div>';
-    h+='<input id="ai-key-inp" type="password" placeholder="sk-ant-..." ';
-    h+='style="width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px">';
-    h+='<button onclick="_saveAIKey()" ';
-    h+='style="background:#0f172a;color:#22c55e;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;width:100%">Guardar y activar</button>';
-    h+='</div>';
+    if(isProf){
+      // Professor sees config
+      h+='<div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center">';
+      h+='<div style="font-size:32px">🔑</div>';
+      h+='<div style="font-size:13px;color:#374151;font-weight:600">Activar Asistente IA</div>';
+      h+='<div style="font-size:12px;color:#6b7280;line-height:1.5">Introduce tu API key de Anthropic.<br>Los alumnos no verán esta pantalla.</div>';
+      h+='<input id="ai-key-inp" type="password" placeholder="sk-ant-..." ';
+      h+='style="width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px">';
+      h+='<button onclick="_saveAIKey()" ';
+      h+='style="background:#0f172a;color:#22c55e;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;width:100%">Guardar y activar</button>';
+      h+='</div>';
+    }else{
+      // Students see friendly message
+      h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;color:#9ca3af;gap:8px">';
+      h+='<div style="font-size:40px">🤖</div>';
+      h+='<div style="font-size:14px;font-weight:600;color:#374151">El asistente no está disponible</div>';
+      h+='<div style="font-size:12px;line-height:1.5">Consulta con tu profesor para activar el asistente de IA.</div>';
+      h+='</div>';
+    }
   }else{
     h+='<div id="ai-msgs" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px">';
     if(!msgs.length){
@@ -10756,16 +10822,15 @@ function _renderAI(root){
       }
     });
     h+='</div>';
-    h+='<div id="ai-typing" style="display:none;padding:6px 12px;font-size:12px;color:#9ca3af">✦ Escribiendo…</div>';
+    h+='<div id="ai-typing" style="display:none;padding:4px 12px;font-size:12px;color:#9ca3af">✦ Escribiendo…</div>';
     h+='<div style="padding:10px;border-top:1px solid #e5e7eb;display:flex;gap:8px;flex-shrink:0">';
     h+='<input id="ai-inp" type="text" placeholder="Escribe tu pregunta…" ';
     h+='style="flex:1;padding:9px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none" ';
     h+='onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_aiSend();}">';
     h+='<button onclick="_aiSend()" style="background:#0f172a;color:#22c55e;border:none;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:16px">➤</button>';
     h+='</div>';
-    h+='<div style="padding:4px 12px 8px;display:flex;justify-content:flex-end">';
-    h+='<button onclick="_aiClear()" style="background:none;border:none;font-size:10px;color:#9ca3af;cursor:pointer;text-decoration:underline">Limpiar conversación</button> &nbsp;';
-    h+='<button onclick="_aiConfig()" style="background:none;border:none;font-size:10px;color:#9ca3af;cursor:pointer;text-decoration:underline">Cambiar API key</button>';
+    h+='<div style="padding:3px 12px 7px;display:flex;justify-content:flex-end">';
+    h+='<button onclick="_aiClear()" style="background:none;border:none;font-size:10px;color:#d1d5db;cursor:pointer">Limpiar conversación</button>';
     h+='</div>';
   }
   root.innerHTML=h;
@@ -10777,17 +10842,22 @@ function _renderAI(root){
 
 function _escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
 
-function _saveAIKey(){
-  var k=(document.getElementById('ai-key-inp')||{value:''}).value.trim();
-  if(!k||!k.startsWith('sk-')){flash('Introduce una API key válida (empieza por sk-)','#dc2626');return;}
-  localStorage.setItem('gf_ai_key',k);
+function _aiSetup(){
+  var key=_getAIKey();
+  var cur=key?'(ya configurada — deja en blanco para mantener)':'';
+  var k=prompt('API key de Anthropic '+cur+':','');
+  if(k===null)return;
+  k=k.trim();
+  if(k&&!k.startsWith('sk-')){flash('La key debe empezar por sk-','#dc2626');return;}
+  if(k){localStorage.setItem('gf_ai_key',k);}
   var ov=document.getElementById('ai-overlay');
   if(ov){ov.innerHTML='';_renderAI(ov);}
 }
 
-function _aiConfig(){
-  localStorage.removeItem('gf_ai_key');
-  localStorage.removeItem('gf_ai_chat');
+function _saveAIKey(){
+  var k=(document.getElementById('ai-key-inp')||{value:''}).value.trim();
+  if(!k||!k.startsWith('sk-')){flash('Introduce una API key válida (empieza por sk-)','#dc2626');return;}
+  localStorage.setItem('gf_ai_key',k);
   var ov=document.getElementById('ai-overlay');
   if(ov){ov.innerHTML='';_renderAI(ov);}
 }
@@ -10804,9 +10874,9 @@ async function _aiSend(){
   if(!inp)return;
   var txt=inp.value.trim();
   if(!txt)return;
-  var key=localStorage.getItem('gf_ai_key')||'';
+  var key=_getAIKey();
   if(!key)return;
-  inp.value='';
+  inp.value='';inp.disabled=true;
   var msgs=JSON.parse(localStorage.getItem('gf_ai_chat')||'[]');
   msgs.push({role:'user',content:txt});
   localStorage.setItem('gf_ai_chat',JSON.stringify(msgs.slice(-30)));
@@ -10814,8 +10884,6 @@ async function _aiSend(){
   if(ov){ov.innerHTML='';_renderAI(ov);}
   var typing=document.getElementById('ai-typing');
   if(typing)typing.style.display='block';
-  var sendBtn=document.querySelector('#ai-overlay button[onclick="_aiSend()"]');
-  if(sendBtn)sendBtn.disabled=true;
   try{
     var resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -10833,22 +10901,22 @@ async function _aiSend(){
       })
     });
     if(!resp.ok){
-      var err=await resp.json().catch(function(){return {};});
-      var errMsg='Error '+resp.status+(err.error?': '+err.error.message:'');
-      msgs.push({role:'assistant',content:errMsg});
+      var err=await resp.json().catch(function(){return{};});
+      msgs.push({role:'assistant',content:'❌ Error '+(err.error?err.error.message:resp.status)});
     }else{
       var data=await resp.json();
-      var reply=data.content&&data.content[0]?data.content[0].text:'Sin respuesta';
-      msgs.push({role:'assistant',content:reply});
+      msgs.push({role:'assistant',content:data.content&&data.content[0]?data.content[0].text:'Sin respuesta'});
     }
   }catch(ex){
-    msgs.push({role:'assistant',content:'Error de conexión: '+ex.message});
+    msgs.push({role:'assistant',content:'❌ Error de conexión: '+ex.message});
   }
   localStorage.setItem('gf_ai_chat',JSON.stringify(msgs.slice(-30)));
   if(ov){ov.innerHTML='';_renderAI(ov);}
 }
 
-/* ── COPIAS DE SEGURIDAD ─────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   COPIAS DE SEGURIDAD DIARIAS
+═══════════════════════════════════════════════════════ */
 var _BACKUP_KEYS=['gf_unidades','gf_act_aprend','gf_act_eval','gf_banco_preguntas','gf_ra_ce','gf_glosario','gf_cont','gf_alumnos','gf_eventos','gf_ejercicios','gf_materiales','gf_notas','gf_bolsa'];
 
 function exportarBackup(){
@@ -10888,17 +10956,15 @@ function importarBackup(){
 function _checkAutoBackup(){
   var last=parseInt(localStorage.getItem('gf_last_backup')||'0');
   if(Date.now()-last>86400000){
-    // Show non-intrusive notification
     setTimeout(function(){
       var n=document.createElement('div');
-      n.style.cssText='position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#1a2744;color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;z-index:3000;box-shadow:0 4px 16px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px';
-      n.innerHTML='💾 Han pasado +24h — <strong>¿Hacer copia de seguridad?</strong> &nbsp;<button onclick="exportarBackup();this.parentElement.remove()" style="background:#22c55e;border:none;color:#fff;border-radius:16px;padding:4px 12px;cursor:pointer;font-size:12px;font-weight:700">Descargar</button><button onclick="localStorage.setItem(\'gf_last_backup\',Date.now()+\'\');this.parentElement.remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:16px;padding:4px 10px;cursor:pointer;font-size:12px;margin-left:4px">Ahora no</button>';
+      n.style.cssText='position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:#1a2744;color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;z-index:3000;box-shadow:0 4px 16px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;white-space:nowrap';
+      n.innerHTML='💾 +24h sin copia &nbsp;<button onclick="exportarBackup();this.parentElement.remove()" style="background:#22c55e;border:none;color:#fff;border-radius:16px;padding:4px 12px;cursor:pointer;font-size:12px;font-weight:700">Descargar</button><button onclick="localStorage.setItem(\'gf_last_backup\',Date.now()+\'\');this.parentElement.remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:16px;padding:4px 10px;cursor:pointer;font-size:12px;margin-left:4px">Ahora no</button>';
       document.body.appendChild(n);
       setTimeout(function(){if(n.parentElement)n.remove();},20000);
     },3000);
   }
 }
-
 </script>
 <script>
 var SIM_HTML = {};
