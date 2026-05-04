@@ -11622,6 +11622,7 @@ async function verDetalleEntrega(entregaId){
   console.log('verDetalleEntrega called with:', entregaId);
   try{
   var {data:ent, error:entErr} = await supa.from('entregas').select('*, actividades(titulo,nivel,peso_calculo,peso_interpretacion,peso_teoria,simuladores(nombre,codigo))').eq('id',entregaId).single();
+  console.log('query done, ent:', ent ? 'OK id='+ent.id : 'NULL', 'err:', entErr);
   console.log('verDetalleEntrega query result:', ent ? 'OK' : 'NULL', entErr ? entErr.message : 'no error');
   // Get alumno profile separately
   var alumnoNome = '—'; var alumnoEmail = '';
