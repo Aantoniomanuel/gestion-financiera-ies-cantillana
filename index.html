@@ -11670,10 +11670,10 @@ async function verDetalleEntrega(entregaId){
     };
     Object.keys(campos).forEach(function(label){
       var key = campos[label];
-      if(datos[key]!==undefined){
+      if(datos[key]!==undefined && datos[key]!==null){
         html += '<div style="background:#fff;padding:6px 8px;border-radius:6px;border:1px solid #e2ddd4">'+
           '<div style="color:#9ca3af;font-size:10px;text-transform:uppercase">'+label+'</div>'+
-          '<div style="font-weight:600;color:#1a2744">'+datos[key].toLocaleString('es-ES')+'€</div>'+
+          '<div style="font-weight:600;color:#1a2744">'+Number(datos[key]).toLocaleString('es-ES')+'€</div>'+
         '</div>';
       }
     });
