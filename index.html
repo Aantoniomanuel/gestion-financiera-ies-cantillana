@@ -8834,6 +8834,11 @@ function abrirModalActBanco(udId, modo){
         '<input class="fi" id="act-banco-peso" type="number" min="0" max="100" value="10"></div>'+
       '<div class="fg"><label class="fl">Fecha de entrega</label>'+
         '<input class="fi" id="act-banco-fecha" type="date"></div></div>'+
+      '<div class="fg"><label class="fl">⏱ Tiempo límite</label>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<input class="fi" id="act-banco-tiempo" type="number" min="0" step="5" value="0" style="width:80px">'+
+          '<span style="font-size:13px;color:var(--muted)">minutos (0 = sin límite)</span>'+
+        '</div></div>'+
       // CE vinculados
       '<div class="fg"><label class="fl">CE que evalúa <span style="color:var(--red);font-size:11px">* obligatorio</span></label>'+
         '<div id="act-banco-race-box" style="border:1px solid var(--border-md);border-radius:var(--r);max-height:160px;overflow-y:auto"></div></div>';
@@ -8982,6 +8987,7 @@ function crearActividadDesdeBanco(udId, modo){
   if(esEval){
     nueva.peso=(document.getElementById('act-banco-peso')||{value:'10'}).value;
     nueva.fecha=(document.getElementById('act-banco-fecha')||{value:''}).value;
+    nueva.tiempoMin=parseInt((document.getElementById('act-banco-tiempo')||{value:'0'}).value)||0;
     // CE vinculados
     var ceVinc=[];
     document.querySelectorAll('.act-banco-ce-chk:checked').forEach(function(c){
@@ -10704,7 +10710,7 @@ function toggleCalcFinanciera(){
 
 function renderCalcFinanciera(root){
   var compact=_calcCompact;
-  root.style.cssText='border-radius:16px;overflow:hidden;width:'+(compact?'220px':'300px')+';font-family:Inter,sans-serif;user-select:none;background:#0f172a';
+  root.style.borderRadius='16px';root.style.overflow='hidden';root.style.width=(compact?'220px':'300px');root.style.fontFamily='Inter,sans-serif';root.style.userSelect='none';root.style.background='#0f172a';
   var btnsAll=[
     [{l:'AC',v:'AC',bg:'#374151',fc:'#f87171'},{l:'( )',v:'(',bg:'#374151'},{l:')',v:')',bg:'#374151'},{l:'÷',v:'÷',bg:'#c9a84c',fc:'#0f172a'}],
     [{l:'sin',v:'sin(',bg:'#1e3a5f',sz:compact?10:12},{l:'cos',v:'cos(',bg:'#1e3a5f',sz:compact?10:12},{l:'tan',v:'tan(',bg:'#1e3a5f',sz:compact?10:12},{l:'√',v:'√(',bg:'#1e3a5f',sz:compact?11:13}],
