@@ -10122,6 +10122,7 @@ function guardarGlosarioProf(udId){
   saveGlosario(); cerrarModal();
   renderUD(UNIDADES.find(function(u){ return u.id===udId; }));
   flash('Término añadido al glosario','#16a34a');
+  if(window._rebuildGlossTooltips) setTimeout(_rebuildGlossTooltips,400);
 }
 
 function abrirModalGlosarioAlumno(udId){
@@ -10186,6 +10187,7 @@ function abrirModalEditarTermino(udId, terminoId){
       saveGlosario(); cerrarModal();
       renderUD(UNIDADES.find(function(u){ return u.id===udId; }));
       flash('Término actualizado','#16a34a');
+      if(window._rebuildGlossTooltips) setTimeout(_rebuildGlossTooltips,400);
     };
   },50);
 }
@@ -11956,6 +11958,139 @@ async function initAuth(){
   if(btn)btn.addEventListener('click',loginConGoogle);
   initAuth();
   _checkAutoBackup();
+})();
+
+// ── Tooltips de glosario ──────────────────────────────
+(function(){
+  var _MAP={},_TERMS=[],_RE=null,_TIP=null,_scanT=null,_pending=[];
+  var _SKIP=/^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|OPTION|CODE|PRE|BUTTON)$/i;
+
+  function _build(){
+    _MAP={};
+    Object.values(GLOSARIO_DATA).forEach(function(arr){
+      arr.forEach(function(t){
+        if(!t.termino) return;
+        var key=t.termino.toLowerCase();
+        _MAP[key]={
+          label:t.termino,
+          def:(t.definicion&&t.definicion.trim())?t.definicion:'⏳ Pendiente de definir en el glosario'
+        };
+      });
+    });
+    _TERMS=Object.keys(_MAP).sort(function(a,b){return b.length-a.length;});
+    if(!_TERMS.length){_RE=null;return;}
+    var esc=_TERMS.map(function(t){return t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');});
+    _RE=new RegExp('('+esc.join('|')+')','gi');
+  }
+
+  function _tip(){
+    if(!_TIP){
+      _TIP=document.createElement('div');
+      _TIP.id='gf-gloss-tip';
+      _TIP.style.cssText='position:fixed;z-index:9999;max-width:300px;background:#1e293b;color:#f1f5f9;font-size:12px;line-height:1.5;padding:10px 14px;border-radius:10px;pointer-events:none;display:none;box-shadow:0 4px 20px rgba(0,0,0,.45);border-left:3px solid #c9a84c';
+      document.body.appendChild(_TIP);
+    }
+    return _TIP;
+  }
+
+  function _move(e){
+    if(!_TIP||_TIP.style.display==='none') return;
+    var x=e.clientX+16,y=e.clientY-12;
+    if(x+316>window.innerWidth) x=e.clientX-320;
+    if(y+110>window.innerHeight) y=e.clientY-118;
+    _TIP.style.left=x+'px';_TIP.style.top=y+'px';
+  }
+
+  document.addEventListener('mouseover',function(e){
+    var t=e.target;
+    if(!t.classList||!t.classList.contains('gf-tt')) return;
+    var entry=_MAP[t.getAttribute('data-tt')];
+    if(!entry) return;
+    var el=_tip();
+    el.innerHTML='<span style="color:#c9a84c;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">'+entry.label+'</span><br><span style="color:#cbd5e1">'+entry.def+'</span>';
+    el.style.display='block';
+    _move(e);
+  });
+  document.addEventListener('mousemove',_move);
+  document.addEventListener('mouseout',function(e){
+    if(!e.target.classList||!e.target.classList.contains('gf-tt')) return;
+    if(_TIP) _TIP.style.display='none';
+  });
+
+  function _wrapNode(node){
+    if(!_RE) return;
+    var txt=node.nodeValue;
+    if(!txt||!txt.trim()) return;
+    _RE.lastIndex=0;
+    if(!_RE.test(txt)) return;
+    _RE.lastIndex=0;
+    var frag=document.createDocumentFragment(),last=0,m,any=false;
+    var wc=/[a-záéíóúàèìòùñüA-ZÁÉÍÓÚÀÈÌÒÙÑÜ0-9]/;
+    while((m=_RE.exec(txt))!==null){
+      var before=m.index>0?txt[m.index-1]:'';
+      var after=m.index+m[0].length<txt.length?txt[m.index+m[0].length]:'';
+      if(wc.test(before)||wc.test(after)) continue;
+      if(m.index>last) frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
+      var sp=document.createElement('span');
+      sp.className='gf-tt';
+      sp.setAttribute('data-tt',m[0].toLowerCase());
+      sp.style.cssText='border-bottom:1.5px dashed #c9a84c;cursor:help;color:inherit;font-style:inherit;font-weight:inherit';
+      sp.textContent=m[0];
+      frag.appendChild(sp);
+      last=m.index+m[0].length;
+      any=true;
+    }
+    if(!any) return;
+    if(last<txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+    node.parentNode.replaceChild(frag,node);
+  }
+
+  function _scan(root){
+    if(!root||!_TERMS.length) return;
+    try{
+      var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{
+        acceptNode:function(n){
+          var p=n.parentElement;
+          if(!p) return NodeFilter.FILTER_REJECT;
+          if(_SKIP.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+          if(p.classList.contains('gf-tt')) return NodeFilter.FILTER_REJECT;
+          if(p.closest&&(p.closest('.gf-tt')||p.closest('#gf-gloss-tip'))) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      },false);
+      var nodes=[],n;
+      while((n=walker.nextNode())) nodes.push(n);
+      nodes.forEach(_wrapNode);
+    }catch(e){}
+  }
+
+  var _obs=new MutationObserver(function(muts){
+    muts.forEach(function(m){
+      m.addedNodes.forEach(function(n){
+        if(n.nodeType===1) _pending.push(n);
+      });
+    });
+    clearTimeout(_scanT);
+    _scanT=setTimeout(function(){
+      var roots=_pending.splice(0);
+      roots.forEach(_scan);
+    },300);
+  });
+
+  // Permite reconstruir tooltips cuando el profesor añade términos al glosario
+  window._rebuildGlossTooltips=function(){
+    document.querySelectorAll('.gf-tt').forEach(function(sp){
+      sp.parentNode.replaceChild(document.createTextNode(sp.textContent),sp);
+    });
+    _build();
+    _scan(document.body);
+  };
+
+  setTimeout(function(){
+    _build();
+    _scan(document.body);
+    _obs.observe(document.body,{childList:true,subtree:true});
+  },1800);
 })();
 
 </script>
