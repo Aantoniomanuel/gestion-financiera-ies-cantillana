@@ -219,6 +219,27 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
 #chat-send:disabled{opacity:.4;cursor:default}
 #chat-clear{background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:12px;padding:0;font-family:inherit}
 #chat-clear:hover{color:rgba(255,255,255,.8)}
+
+/* ── NOTIFICACIONES NAV ──────────────────────────────── */
+.nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;line-height:1;margin-left:auto;flex-shrink:0}
+.nav-badge.gold{background:var(--gold);color:var(--navy)}
+/* ── PROGRESO ALUMNO DASHBOARD ───────────────────────── */
+#dash-progreso-alumno{display:none}
+.prog-bloque{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.prog-bloque:last-child{border-bottom:none}
+.prog-bloque .pb-num{width:28px;height:28px;border-radius:7px;background:var(--navy);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:'Playfair Display',serif}
+.prog-bloque .pb-info{flex:1;min-width:0}
+.prog-bloque .pb-titulo{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog-bloque .pb-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.prog-bloque .pb-right{text-align:right;flex-shrink:0;min-width:56px}
+.prog-bloque .pb-pct{font-size:15px;font-weight:700;color:var(--navy);font-family:'Playfair Display',serif}
+.prog-bloque .pb-bar{height:5px;background:#e5e7eb;border-radius:3px;margin-top:5px;overflow:hidden}
+.prog-bloque .pb-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--navy),#3b5bdb);transition:width .6s ease}
+.prog-bloque .pb-fill.done{background:linear-gradient(90deg,#16a34a,#22c55e)}
+#dash-resumen-alumno{display:none}
+.resumen-stat{display:flex;flex-direction:column;align-items:center;padding:12px 8px}
+.resumen-stat .rs-num{font-size:26px;font-weight:700;font-family:'Playfair Display',serif;color:var(--navy)}
+.resumen-stat .rs-lbl{font-size:11px;color:var(--muted);margin-top:2px;text-align:center}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="window.XLSX=null"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -311,7 +332,7 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
 
     <!-- ACTIVIDADES -->
     <button class="nav-item" id="nav-actividades" onclick="goTo('actividades',this)">📝 Actividades evaluables</button>
-    <button class="nav-item" id="nav-mis-actividades" onclick="goTo('mis-actividades',this)">📋 Mis actividades</button>
+    <button class="nav-item" id="nav-mis-actividades" onclick="goTo('mis-actividades',this)" style="display:none">📋 Mis actividades <span class="nav-badge gold" id="badge-mis-act" style="display:none"></span></button>
 
     <div class="s-sec" id="sec-prof">Área Profesor</div>
     
@@ -344,6 +365,13 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
         <div class="sc"><div class="sn" id="dash-act">0</div><div class="sl">Actividades creadas</div></div>
         <div class="sc"><div class="sn" id="dash-alum">0</div><div class="sl">Alumnos</div></div>
         <div class="sc"><div class="sn" id="dash-horas">126</div><div class="sl">Horas totales</div></div>
+      </div>
+      <!-- Resumen alumno (oculto para profesor) -->
+      <div id="dash-resumen-alumno" style="display:none;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem">
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-sims">0</div><div class="rs-lbl">Ejercicios completados</div></div></div>
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-entregas">0</div><div class="rs-lbl">Actividades entregadas</div></div></div>
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-pct">0%</div><div class="rs-lbl">Progreso global</div></div></div>
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-racha">—</div><div class="rs-lbl">Último acceso</div></div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 340px;gap:1.25rem;align-items:start">
         <div class="card">
@@ -784,9 +812,24 @@ function cerrarModal(){ document.getElementById('modal').classList.remove('open'
 
 // ── DASHBOARD ──────────────────────────────────────────
 function renderDashboard(){
-  document.getElementById('dash-saludo').textContent = 'Buenos días'+(ROL==='profesor'?', Profesor':'')+'  —  Gestión Financiera · Curso 26-27';
+  var hora = new Date().getHours();
+  var saludo = hora < 13 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
+  document.getElementById('dash-saludo').textContent = saludo+(ROL==='profesor'?', Profesor':''+(typeof USUARIO_ACTUAL!=='undefined'&&USUARIO_ACTUAL?', '+(USUARIO_ACTUAL.nombre||USUARIO_ACTUAL.email.split('@')[0]):''))+'  —  Gestión Financiera · Curso 26-27';
   var elAct = document.getElementById('dash-act'); if(elAct) elAct.textContent = DB.ejercicios.length;
   var elAlum = document.getElementById('dash-alum'); if(elAlum) elAlum.textContent = DB.alumnos.length;
+
+  // Mostrar/ocultar secciones según rol
+  var resumen = document.getElementById('dash-resumen-alumno');
+  var stats = document.getElementById('dash-stats');
+  if(ROL === 'alumno'){
+    if(stats) stats.style.display = 'none';
+    if(resumen) resumen.style.display = 'grid';
+    renderProgresoAlumno();
+  } else {
+    if(stats) stats.style.display = '';
+    if(resumen) resumen.style.display = 'none';
+  }
+
   var udsHtml = UNIDADES.map(function(u){
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'+
       '<div class="ud-num">'+u.n+'</div>'+
@@ -807,6 +850,203 @@ function renderDashboard(){
       (ev.desc?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+ev.desc+'</div>':'')+
       '</div><span class="badge '+(tipos[ev.tipo]||'b-gray')+'">'+ev.tipo+'</span></div>';
   }).join('') : '<p style="color:var(--muted);font-size:13px">Sin eventos próximos</p>';
+}
+
+// ── PROGRESO ALUMNO ──────────────────────────────────────
+async function renderProgresoAlumno(){
+  if(!USUARIO_ACTUAL) return;
+  var draEl = document.getElementById('dash-resumen-alumno');
+  if(!draEl || draEl.style.display === 'none') return;
+
+  try{
+    // Ejercicios completados por simulador
+    var [{data:ejercicios},{data:entregas},{data:actsActivas}] = await Promise.all([
+      supa.from('ejercicios_realizados').select('simulador_id,nivel,puntuacion').eq('alumno_id',USUARIO_ACTUAL.id).eq('completado',true),
+      supa.from('entregas').select('actividad_id,entregada_at,calificacion').eq('alumno_id',USUARIO_ACTUAL.id),
+      supa.from('actividades').select('id,simulador_id,titulo').eq('activa',true)
+    ]);
+    ejercicios = ejercicios||[]; entregas = entregas||[]; actsActivas = actsActivas||[];
+
+    var entregadas = entregas.filter(function(e){ return e.entregada_at; });
+    var totalSims = ejercicios.length;
+    var totalEntregas = entregadas.length;
+
+    // Progreso por bloque: se basa en ejercicios realizados del simulador de ese bloque
+    // Mapeamos simuladores a unidades por nombre/código
+    var simIds = {}; // simulador_id -> set de ejercicios
+    ejercicios.forEach(function(e){
+      if(!simIds[e.simulador_id]) simIds[e.simulador_id] = [];
+      simIds[e.simulador_id].push(e);
+    });
+
+    // Calcular progreso global basado en actividades entregadas vs activas
+    var totalActsAlumno = actsActivas.length;
+    var entregaMap = {};
+    entregas.forEach(function(e){ entregaMap[e.actividad_id] = e; });
+    var completadasCount = actsActivas.filter(function(a){ var e=entregaMap[a.id]; return e&&e.entregada_at; }).length;
+    var pctGlobal = totalActsAlumno > 0 ? Math.round(completadasCount/totalActsAlumno*100) : 0;
+
+    // Actualizar tarjetas resumen
+    var elSims = document.getElementById('dra-sims'); if(elSims) elSims.textContent = totalSims;
+    var elEntr = document.getElementById('dra-entregas'); if(elEntr) elEntr.textContent = totalEntregas;
+    var elPct  = document.getElementById('dra-pct'); if(elPct) elPct.textContent = pctGlobal+'%';
+    var elRacha = document.getElementById('dra-racha');
+    if(elRacha){
+      var ultima = entregas.filter(function(e){return e.entregada_at;}).sort(function(a,b){return new Date(b.entregada_at)-new Date(a.entregada_at);});
+      if(ultima.length){
+        var d = new Date(ultima[0].entregada_at);
+        elRacha.textContent = d.getDate()+'/'+(d.getMonth()+1);
+      } else {
+        elRacha.textContent = '—';
+      }
+    }
+
+    // Progreso por bloques — mapa simulador → bloque
+    var SIM_BLOQUE = {
+      'sim-prestamos':'ud2','sim-pb':'ud2','sim-seguros':'ud3',
+      'sim-inversiones':'ud4','sim-bolsa':'ud4','sim-presupuestos':'ud5','sim-aef':'ud5'
+    };
+    var progPorUD = {};
+    UNIDADES.forEach(function(u){ progPorUD[u.id] = {ejs:0, acts:0, actsTotal:0}; });
+
+    // Contar ejercicios por bloque
+    var {data:sims} = await supa.from('simuladores').select('id,codigo');
+    var simCodigoMap = {};
+    (sims||[]).forEach(function(s){ simCodigoMap[s.id] = s.codigo; });
+    ejercicios.forEach(function(e){
+      var cod = simCodigoMap[e.simulador_id];
+      var udId = cod ? SIM_BLOQUE[cod] : null;
+      if(udId && progPorUD[udId]) progPorUD[udId].ejs++;
+    });
+
+    // Contar actividades por bloque
+    actsActivas.forEach(function(a){
+      var cod = simCodigoMap[a.simulador_id];
+      var udId = cod ? SIM_BLOQUE[cod] : null;
+      if(udId && progPorUD[udId]){
+        progPorUD[udId].actsTotal++;
+        var e = entregaMap[a.id];
+        if(e && e.entregada_at) progPorUD[udId].acts++;
+      }
+    });
+
+    // Render bloques con progreso
+    var udsEl = document.getElementById('dash-uds');
+    if(!udsEl) return;
+    udsEl.innerHTML = UNIDADES.map(function(u){
+      var p = progPorUD[u.id]||{ejs:0,acts:0,actsTotal:0};
+      // Progreso: si hay actividades, pesa 70%; ejercicios el 30% (cap 10 = 100%)
+      var pctActs = p.actsTotal>0 ? (p.acts/p.actsTotal) : 0;
+      var pctEjs  = Math.min(p.ejs/5, 1); // 5 ejercicios = 100% en esa componente
+      var pct = p.actsTotal>0 ? Math.round(pctActs*70 + pctEjs*30) : Math.round(pctEjs*100);
+      var done = pct >= 100;
+      return '<div class="prog-bloque">'+
+        '<div class="pb-num">'+u.n+'</div>'+
+        '<div class="pb-info">'+
+          '<div class="pb-titulo">'+u.titulo+'</div>'+
+          '<div class="pb-sub">'+(p.ejs||0)+' ejercicios'+(p.actsTotal>0?' · '+p.acts+'/'+p.actsTotal+' actividades':'')+'</div>'+
+        '</div>'+
+        '<div class="pb-right">'+
+          '<div class="pb-pct" style="color:'+(done?'#16a34a':'var(--navy)')+'">'+pct+'%</div>'+
+          '<div class="pb-bar"><div class="pb-fill'+(done?' done':'')+'" style="width:'+pct+'%"></div></div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+  } catch(err){
+    console.error('[Progreso alumno]', err);
+  }
+}
+
+// ── NOTIFICACIONES ────────────────────────────────────────
+var _notifInterval = null;
+
+async function checkNotificaciones(){
+  if(!USUARIO_ACTUAL || USUARIO_ACTUAL.rol !== 'alumno') return;
+  try{
+    // Actividades pendientes (activas y no entregadas)
+    var [{data:acts},{data:entregas}] = await Promise.all([
+      supa.from('actividades').select('id,titulo,fecha_limite,created_at').eq('activa',true),
+      supa.from('entregas').select('actividad_id,entregada_at').eq('alumno_id',USUARIO_ACTUAL.id)
+    ]);
+    acts = acts||[]; entregas = entregas||[];
+    var entregaSet = new Set((entregas).filter(function(e){return e.entregada_at;}).map(function(e){return e.actividad_id;}));
+    var pendientes = acts.filter(function(a){
+      if(entregaSet.has(a.id)) return false;
+      if(a.fecha_limite && new Date(a.fecha_limite) < new Date()) return false;
+      return true;
+    });
+
+    // Eventos próximos (7 días)
+    var en7 = new Date(); en7.setDate(en7.getDate()+7);
+    var eventosProximos = DB.eventos.filter(function(e){
+      var f = new Date(e.fecha); return f >= new Date() && f <= en7;
+    });
+
+    // Badge en "Mis actividades"
+    var badge = document.getElementById('badge-mis-act');
+    if(badge){
+      if(pendientes.length > 0){
+        badge.textContent = pendientes.length;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    // Badge en calendario si hay eventos próximos
+    var navCal = document.getElementById('ni-calendario');
+    var badgeCal = document.getElementById('badge-cal');
+    if(navCal && !badgeCal && eventosProximos.length > 0){
+      var b = document.createElement('span');
+      b.className = 'nav-badge';
+      b.id = 'badge-cal';
+      b.textContent = eventosProximos.length;
+      navCal.appendChild(b);
+    } else if(badgeCal){
+      if(eventosProximos.length > 0){
+        badgeCal.textContent = eventosProximos.length;
+        badgeCal.style.display = 'inline-flex';
+      } else {
+        badgeCal.style.display = 'none';
+      }
+    }
+
+    // Notificación emergente si hay actividad nueva (created_at < 24h y no vista)
+    var vistas = JSON.parse(localStorage.getItem('gf_notif_vistas')||'[]');
+    var nuevas = pendientes.filter(function(a){
+      if(vistas.indexOf(a.id) >= 0) return false;
+      var creada = new Date(a.created_at);
+      var hace24h = new Date(); hace24h.setDate(hace24h.getDate()-1);
+      return creada > hace24h;
+    });
+    if(nuevas.length > 0){
+      nuevas.forEach(function(a){
+        if(vistas.indexOf(a.id) < 0) vistas.push(a.id);
+      });
+      localStorage.setItem('gf_notif_vistas', JSON.stringify(vistas));
+      mostrarNotifActividad(nuevas[0].titulo, nuevas.length);
+    }
+
+  } catch(err){ console.error('[Notif]', err); }
+}
+
+function mostrarNotifActividad(titulo, total){
+  var n = document.createElement('div');
+  n.style.cssText = 'position:fixed;top:20px;right:20px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:12px;padding:14px 16px;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:9000;font-family:inherit;cursor:pointer;animation:slideInRight .3s ease';
+  n.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">📬 Nueva actividad</div>'+
+    '<div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px">'+titulo+'</div>'+
+    (total>1?'<div style="font-size:12px;color:var(--muted)">+'+( total-1)+' más pendiente'+(total>2?'s':'')+'</div>':'')+
+    '<div style="font-size:11px;color:var(--muted);margin-top:6px">Pulsa para verla →</div>';
+  n.onclick = function(){ goTo('mis-actividades', document.getElementById('nav-mis-actividades')); n.remove(); };
+  if(!document.getElementById('notif-act-style')){
+    var s = document.createElement('style');
+    s.id = 'notif-act-style';
+    s.textContent = '@keyframes slideInRight{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}';
+    document.head.appendChild(s);
+  }
+  document.body.appendChild(n);
+  setTimeout(function(){ if(n.parentNode) n.remove(); }, 6000);
 }
 
 // ── CALENDARIO ─────────────────────────────────────────
@@ -11255,6 +11495,13 @@ function actualizarUIConPerfil(perfil){
         });
         // Lanzar onboarding si es la primera vez
         setTimeout(function(){ if(window.obStart) obStart(); }, 600);
+        // Mostrar nav mis-actividades y lanzar notificaciones
+        var navMisAct = document.getElementById('nav-mis-actividades');
+        if(navMisAct) navMisAct.style.display = '';
+        setTimeout(function(){ checkNotificaciones(); }, 1200);
+        // Polling cada 3 minutos para nuevas actividades
+        if(_notifInterval) clearInterval(_notifInterval);
+        _notifInterval = setInterval(function(){ checkNotificaciones(); }, 3*60*1000);
       }
     },50);
   });
