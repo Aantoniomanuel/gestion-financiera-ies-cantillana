@@ -183,10 +183,10 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
 #ob-card .ob-arrow{position:absolute;width:12px;height:12px;background:#fff;transform:rotate(45deg)}
 
 /* ── CHAT IA ─────────────────────────────────────────── */
-#chat-fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--navy);color:#fff;border:none;cursor:pointer;z-index:7000;box-shadow:0 4px 18px rgba(26,39,68,.45);font-size:22px;display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s}
+#chat-fab{position:fixed;bottom:24px;right:86px;width:52px;height:52px;border-radius:50%;background:var(--navy);color:#fff;border:none;cursor:pointer;z-index:7000;box-shadow:0 4px 18px rgba(26,39,68,.45);font-size:22px;display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s}
 #chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(26,39,68,.55)}
 #chat-fab .chat-badge{position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:var(--gold);border-radius:50%;display:none}
-#chat-panel{position:fixed;bottom:86px;right:24px;width:370px;max-height:560px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.2);z-index:7001;display:none;flex-direction:column;overflow:hidden;border:1px solid var(--border)}
+#chat-panel{position:fixed;bottom:86px;right:86px;width:370px;max-height:560px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.2);z-index:7001;display:none;flex-direction:column;overflow:hidden;border:1px solid var(--border)}
 #chat-panel.open{display:flex}
 #chat-header{background:var(--navy);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 #chat-header .ch-avatar{width:34px;height:34px;border-radius:50%;background:rgba(201,168,76,.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
@@ -10787,11 +10787,11 @@ window.addEventListener('load', function(){
 
 <!-- Calculadora Financiera Flotante -->
 <button id="calc-fab" onclick="toggleCalcFinanciera()" title="Calculadora financiera"
-  style="position:fixed;bottom:86px;right:24px;width:52px;height:52px;border-radius:50%;background:#1a2744;color:#c9a84c;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:1500;display:flex;align-items:center;justify-content:center;transition:transform .15s">
+  style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#1a2744;color:#c9a84c;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:1500;display:flex;align-items:center;justify-content:center;transition:transform .15s">
   🧮
 </button>
 
-<div id="calc-overlay" style="display:none;position:fixed;bottom:148px;right:24px;width:340px;max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:1500;border:1px solid #e2e8f0">
+<div id="calc-overlay" style="display:none;position:fixed;bottom:88px;right:24px;width:340px;max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:1500;border:1px solid #e2e8f0">
 </div>
 
 <script>
