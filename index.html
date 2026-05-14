@@ -11347,14 +11347,13 @@ async function renderActividades(){
   html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="act-fecha" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" type="datetime-local"></div>';
   html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálc/Int/Teo</div><div style="display:flex;gap:6px"><input id="act-p-calc" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="60"><input id="act-p-int" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="30"><input id="act-p-teo" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="10"></div></div>';
   html+='</div>';
-  // ── Selector RA/CE ──
   html+=buildSelectorRACE('act-race', []);
   html+='<button class="btn-calc" onclick="crearActividad()" style="padding:10px 28px;font-size:14px;margin-top:4px">Crear actividad</button></div></div>';
 
   if(!acts||!acts.length){
     html+='<div class="card"><div class="card-body" style="text-align:center;color:#9ca3af;padding:2rem"><div style="font-size:2rem;margin-bottom:8px">📝</div>No hay actividades creadas.</div></div>';
   } else {
-    html+='<div class="card"><div class="card-header"><div class="card-title">📋 Actividades creadas</div></div><div class="card-body" style="padding:0"><div style="overflow-x:auto"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Actividad</th><th>Simulador</th><th>Nivel</th><th style="min-width:140px">RA / CE vinculados</th><th>Fecha límite</th><th>Entregas</th><th>Estado</th><th></th></tr></thead><tbody>';
+    html+='<div class="card"><div class="card-header"><div class="card-title">📋 Actividades creadas</div></div><div class="card-body" style="padding:0"><div style="overflow-x:auto"><table class="dt" style="width:100%"><thead><tr><th style="text-align:left;padding:10px 14px">Actividad</th><th>Simulador</th><th>Nivel</th><th style="min-width:160px">RA / CE vinculados</th><th>Fecha límite</th><th>Entregas</th><th>Estado</th><th></th></tr></thead><tbody>';
     acts.forEach(function(act){
       var s=sm[act.simulador_id]||{};
       var ea=(entregas||[]).filter(function(e){return e.actividad_id===act.id;});
@@ -11364,26 +11363,18 @@ async function renderActividades(){
       var sc=!act.activa?'#9ca3af':(!lim||lim>ahora)?'var(--green)':'var(--red)';
       var nlbl={basico:'⭐ Básico',medio:'⭐⭐ Medio',avanzado:'⭐⭐⭐ Avanzado'}[act.nivel]||act.nivel;
       var actId=act.id;
-      // ── Chips RA/CE vinculados ──
+      // Chips RA/CE
       var ceVinc=act.ce_vinculados||[];
       var chipsHtml='';
       if(ceVinc.length){
-        // Agrupar por RA
         var byRA={};
-        ceVinc.forEach(function(cv){
-          if(!byRA[cv.raId])byRA[cv.raId]=[];
-          byRA[cv.raId].push(cv.ceId);
-        });
+        ceVinc.forEach(function(cv){ if(!byRA[cv.raId])byRA[cv.raId]=[]; byRA[cv.raId].push(cv.ceId); });
         Object.keys(byRA).forEach(function(raId){
-          chipsHtml+='<div style="margin-bottom:3px"><span style="font-size:10px;font-weight:700;color:#1a2744;font-family:IBM Plex Mono,monospace">'+raId+'</span> ';
-          chipsHtml+=byRA[raId].map(function(ceId){
-            return '<span style="display:inline-block;background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 5px;font-size:10px;font-family:IBM Plex Mono,monospace;margin:1px">'+ceId+'</span>';
-          }).join('');
+          chipsHtml+='<div style="margin-bottom:2px"><span style="font-size:10px;font-weight:700;color:#1a2744;font-family:\'IBM Plex Mono\',monospace">'+raId+':</span> ';
+          chipsHtml+=byRA[raId].map(function(ceId){ return '<span style="display:inline-block;background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 5px;font-size:10px;font-family:\'IBM Plex Mono\',monospace;margin:1px">'+ceId+'</span>'; }).join('');
           chipsHtml+='</div>';
         });
-      } else {
-        chipsHtml='<span style="font-size:11px;color:#d1ccc6">—</span>';
-      }
+      } else { chipsHtml='<span style="font-size:11px;color:#d1ccc6">—</span>'; }
       html+='<tr><td style="padding:10px 14px"><div style="font-weight:600;font-size:13px">'+act.titulo+'</div><div style="font-size:11px;color:#9ca3af">'+act.peso_calculo+'% calc · '+act.peso_interpretacion+'% int · '+act.peso_teoria+'% teo</div></td><td style="text-align:center;font-size:12px">'+(s.nombre||'—')+'</td><td style="text-align:center;font-size:12px">'+nlbl+'</td><td style="padding:8px 12px">'+chipsHtml+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(lim?lim.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'Sin límite')+'</td><td style="text-align:center;font-weight:700;color:#1a2744">'+ea.length+'</td><td style="text-align:center"><span style="font-size:12px;font-weight:700;color:'+sc+'">'+slbl+'</span></td>';
       html+='<td style="text-align:center;white-space:nowrap"><button class="btn-sm" data-id="'+actId+'" onclick="verEntregas(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">Ver</button><button class="btn-sm" data-id="'+actId+'" data-activa="'+act.activa+'" onclick="toggleActividad(this.getAttribute(\'data-id\'),this.getAttribute(\'data-activa\')===\'true\')" style="font-size:11px;color:'+(act.activa?'var(--red)':'var(--green)')+';margin-right:2px">'+(act.activa?'⏸':'▶')+'</button><button class="btn-sm" data-id="'+actId+'" onclick="editarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">✏️</button><button class="btn-sm" data-id="'+actId+'" onclick="eliminarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;color:var(--red)">🗑</button></td></tr>';
     });
@@ -11392,24 +11383,24 @@ async function renderActividades(){
   cont.innerHTML=html;
 }
 
-// ── Helper: construye el selector RA/CE con checkboxes ──────────────────
+// ── Construye el panel de checkboxes RA/CE ─────────────────────────────
 function buildSelectorRACE(prefixId, selectedCE) {
-  // selectedCE: array de {raId, ceId} ya marcados
   var allRA = getAllRA();
   if(!allRA||!allRA.length) return '';
-  var html='<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:6px">📐 RA y CE vinculados <span style="font-weight:400;color:#d1ccc6">(instrumentos de evaluación)</span></div>';
-  html+='<div id="'+prefixId+'-container" style="border:1.5px solid #d1ccc6;border-radius:8px;padding:10px;background:#faf8f4;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px">';
+  var html='<div style="margin-bottom:12px">';
+  html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:6px">📐 RA y CE vinculados <span style="font-weight:400;color:#d1ccc6">(instrumentos de evaluación)</span></div>';
+  html+='<div style="border:1.5px solid #d1ccc6;border-radius:8px;padding:10px;background:#faf8f4;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px">';
   allRA.forEach(function(item){
     var ra=item.ra;
-    var uid='race-ra-'+prefixId+'-'+ra.id;
+    var ceList=ra.ce||[];
     html+='<div style="background:#fff;border:1px solid #e8e4dc;border-radius:7px;padding:8px 10px">';
-    html+='<div style="font-size:11px;font-weight:700;color:#1a2744;margin-bottom:5px;font-family:IBM Plex Mono,monospace">'+ra.id+'</div>';
-    html+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px;line-height:1.4">'+ra.nombre.replace(/^RA\d+\s*[—-]\s*/,'')+'</div>';
-    (ra.ce||[]).forEach(function(ce){
-      var isChecked=selectedCE.some(function(s){return s.raId===ra.id&&s.ceId===ce.id;});
+    html+='<div style="font-size:11px;font-weight:700;color:#1a2744;margin-bottom:4px;font-family:\'IBM Plex Mono\',monospace">'+ra.id+'</div>';
+    html+='<div style="font-size:10px;color:#9ca3af;margin-bottom:6px;line-height:1.4">'+ra.nombre.replace(/^RA\d+\s*[—\-]\s*/,'').substring(0,80)+'…</div>';
+    ceList.forEach(function(ce){
+      var isChecked=(selectedCE||[]).some(function(s){return s.raId===ra.id&&s.ceId===ce.id;});
       html+='<label style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;cursor:pointer;font-size:11px;color:#374151;line-height:1.4">';
       html+='<input type="checkbox" class="race-ce-chk" data-prefix="'+prefixId+'" data-raid="'+ra.id+'" data-ceid="'+ce.id+'" '+(isChecked?'checked':'')+' style="margin-top:2px;flex-shrink:0;accent-color:#1a2744">';
-      html+='<span><span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:#1e40af;font-size:10px">'+ce.id+'</span> '+ce.descripcion+'</span>';
+      html+='<span><span style="font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:#1e40af;font-size:10px">'+ce.id+'</span> '+(ce.desc||ce.descripcion||'')+'</span>';
       html+='</label>';
     });
     html+='</div>';
@@ -11418,13 +11409,11 @@ function buildSelectorRACE(prefixId, selectedCE) {
   return html;
 }
 
-// ── Helper: recoge los CE marcados del selector ──────────────────────────
+// ── Recoge los checkboxes marcados del selector ────────────────────────
 function recogerCEVinculados(prefixId){
   var checks=document.querySelectorAll('.race-ce-chk[data-prefix="'+prefixId+'"]');
   var result=[];
-  checks.forEach(function(ch){
-    if(ch.checked) result.push({raId:ch.dataset.raid, ceId:ch.dataset.ceid});
-  });
+  checks.forEach(function(ch){ if(ch.checked) result.push({raId:ch.dataset.raid, ceId:ch.dataset.ceid}); });
   return result;
 }
 
@@ -11479,7 +11468,7 @@ async function editarActividad(actId){
     '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="edit-fecha" type="datetime-local" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+fv+'"></div></div>'+
     '<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálculo/Interpretación/Teoría</div><div style="display:flex;gap:8px"><input id="edit-pc" type="number" value="'+act.peso_calculo+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pi" type="number" value="'+act.peso_interpretacion+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pt" type="number" value="'+act.peso_teoria+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"></div></div>'+
     buildSelectorRACE('edit-race', ceActuales)+
-    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">'+
     '<button class="btn-sm" onclick="document.getElementById(\'edit-modal\').remove()">Cancelar</button>'+
     '<button class="btn-calc" data-id="'+actId+'" onclick="guardarEdicion(this.getAttribute(\'data-id\'))" style="padding:8px 20px">💾 Guardar</button>'+
     '</div></div>';
