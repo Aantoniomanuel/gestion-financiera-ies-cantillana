@@ -181,6 +181,44 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
 #ob-card .ob-dot{width:6px;height:6px;border-radius:50%;background:#e5e7eb;transition:background .2s}
 #ob-card .ob-dot.active{background:var(--navy);width:18px;border-radius:3px}
 #ob-card .ob-arrow{position:absolute;width:12px;height:12px;background:#fff;transform:rotate(45deg)}
+
+/* ── CHAT IA ─────────────────────────────────────────── */
+#chat-fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--navy);color:#fff;border:none;cursor:pointer;z-index:7000;box-shadow:0 4px 18px rgba(26,39,68,.45);font-size:22px;display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s}
+#chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(26,39,68,.55)}
+#chat-fab .chat-badge{position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:var(--gold);border-radius:50%;display:none}
+#chat-panel{position:fixed;bottom:86px;right:24px;width:370px;max-height:560px;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.2);z-index:7001;display:none;flex-direction:column;overflow:hidden;border:1px solid var(--border)}
+#chat-panel.open{display:flex}
+#chat-header{background:var(--navy);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+#chat-header .ch-avatar{width:34px;height:34px;border-radius:50%;background:rgba(201,168,76,.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+#chat-header .ch-info{flex:1}
+#chat-header .ch-name{font-size:14px;font-weight:700;color:#fff;font-family:'Playfair Display',serif}
+#chat-header .ch-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px}
+#chat-header .ch-close{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:18px;padding:2px 4px;line-height:1}
+#chat-header .ch-close:hover{color:#fff}
+#chat-msgs{flex:1;overflow-y:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:10px;min-height:0}
+#chat-msgs::-webkit-scrollbar{width:4px}
+#chat-msgs::-webkit-scrollbar-track{background:transparent}
+#chat-msgs::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:2px}
+.cm{max-width:86%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word}
+.cm.user{align-self:flex-end;background:var(--navy);color:#fff;border-radius:12px 12px 3px 12px}
+.cm.ai{align-self:flex-start;background:var(--surface2);color:var(--text);border-radius:12px 12px 12px 3px;border:1px solid var(--border)}
+.cm.ai .cm-label{font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
+.cm.typing{opacity:.6}
+.cm.typing span{display:inline-flex;gap:3px;align-items:center}
+.cm.typing span i{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:bounce .9s infinite}
+.cm.typing span i:nth-child(2){animation-delay:.15s}
+.cm.typing span i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+#chat-suggest{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;flex-shrink:0}
+.cs-btn{font-size:11.5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border-md);background:var(--surface2);color:var(--navy);cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s}
+.cs-btn:hover{background:var(--gold-pale)}
+#chat-input-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;background:#fff}
+#chat-input{flex:1;border:1px solid var(--border-md);border-radius:10px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;resize:none;line-height:1.4;max-height:90px;overflow-y:auto;color:var(--text)}
+#chat-input:focus{border-color:var(--navy)}
+#chat-send{width:36px;height:36px;border-radius:10px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;transition:opacity .15s}
+#chat-send:disabled{opacity:.4;cursor:default}
+#chat-clear{background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:12px;padding:0;font-family:inherit}
+#chat-clear:hover{color:rgba(255,255,255,.8)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="window.XLSX=null"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12281,11 +12319,264 @@ var _origActualizar = window.actualizarUIConPerfil;
 
 })();
 
+
+// ── CHAT IA (Pollinations · sin registro) ────────────────
+(function(){
+
+var CHAT_HISTORY = [];  // {role:'user'|'assistant', content:'...'}
+var chatOpen = false;
+var chatTyping = false;
+
+var SYSTEM_PROMPT = 'Eres un asistente de estudio para el módulo profesional de Gestión Financiera del CFGS de Administración y Finanzas del IES Cantillana (Sevilla). ' +
+  'Tu misión es ayudar a los alumnos a entender los contenidos del módulo: necesidades de financiación, productos financieros (préstamos, hipotecas, leasing, renting, factoring), ' +
+  'seguros, inversiones (renta fija, variable, fondos), análisis bursátil, presupuestos, estados financieros y planificación económica empresarial. ' +
+  'También puedes responder dudas generales de economía, administración y finanzas. ' +
+  'Responde siempre en español, de forma clara y didáctica, con ejemplos prácticos cuando sea útil. ' +
+  'Si la pregunta no tiene relación con el estudio o las finanzas, indícalo amablemente y redirige hacia el temario. ' +
+  'Usa un tono cercano y motivador, apropiado para estudiantes de FP.';
+
+var SUGERENCIAS_INICIO = [
+  '¿Qué es el leasing?',
+  '¿Cómo funciona la bolsa?',
+  'Explícame el VAN y el TIR',
+  '¿Qué diferencia hay entre renta fija y variable?'
+];
+
+function chatInit(){
+  var msgs = document.getElementById('chat-msgs');
+  if(!msgs) return;
+  if(msgs.children.length === 0){
+    // Mensaje de bienvenida
+    var who = (typeof USUARIO_ACTUAL !== 'undefined' && USUARIO_ACTUAL)
+      ? (USUARIO_ACTUAL.nombre || USUARIO_ACTUAL.email.split('@')[0])
+      : '';
+    var saludo = who ? '¡Hola, ' + who + '! ' : '¡Hola! ';
+    chatAddMsg('ai', saludo + 'Soy tu asistente de Gestión Financiera. Puedo ayudarte con dudas del módulo, conceptos financieros o ejercicios. ¿En qué estás trabajando?');
+    chatSugerencias(SUGERENCIAS_INICIO);
+  }
+}
+
+function chatToggle(){
+  chatOpen = !chatOpen;
+  var panel = document.getElementById('chat-panel');
+  var badge = document.getElementById('chat-badge');
+  if(chatOpen){
+    panel.classList.add('open');
+    badge.style.display = 'none';
+    chatInit();
+    setTimeout(function(){
+      var inp = document.getElementById('chat-input');
+      if(inp) inp.focus();
+      chatScrollBottom();
+    }, 60);
+  } else {
+    panel.classList.remove('open');
+  }
+}
+
+function chatScrollBottom(){
+  var msgs = document.getElementById('chat-msgs');
+  if(msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+
+function chatAddMsg(role, text){
+  var msgs = document.getElementById('chat-msgs');
+  if(!msgs) return null;
+  var div = document.createElement('div');
+  div.className = 'cm ' + role;
+  if(role === 'ai'){
+    div.innerHTML = '<div class="cm-label">Asistente</div>' + chatFormatText(text);
+  } else {
+    div.textContent = text;
+  }
+  msgs.appendChild(div);
+  chatScrollBottom();
+  return div;
+}
+
+function chatFormatText(text){
+  // Negrita **texto**, código `code`, saltos de línea
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code style="background:#f3f4f6;padding:1px 4px;border-radius:4px;font-size:12px;font-family:monospace">$1</code>')
+    .replace(/\n/g,'<br>');
+}
+
+function chatTypingStart(){
+  var msgs = document.getElementById('chat-msgs');
+  if(!msgs) return null;
+  var div = document.createElement('div');
+  div.className = 'cm ai typing';
+  div.id = 'chat-typing-indicator';
+  div.innerHTML = '<div class="cm-label">Asistente</div><span><i></i><i></i><i></i></span>';
+  msgs.appendChild(div);
+  chatScrollBottom();
+  return div;
+}
+
+function chatTypingEnd(){
+  var el = document.getElementById('chat-typing-indicator');
+  if(el) el.remove();
+}
+
+function chatSugerencias(list){
+  var sug = document.getElementById('chat-suggest');
+  if(!sug) return;
+  sug.innerHTML = '';
+  list.slice(0,4).forEach(function(s){
+    var btn = document.createElement('button');
+    btn.className = 'cs-btn';
+    btn.textContent = s;
+    btn.onclick = function(){ chatEnviarTexto(s); };
+    sug.appendChild(btn);
+  });
+}
+
+function chatClear(){
+  CHAT_HISTORY = [];
+  var msgs = document.getElementById('chat-msgs');
+  var sug = document.getElementById('chat-suggest');
+  if(msgs) msgs.innerHTML = '';
+  if(sug) sug.innerHTML = '';
+  chatInit();
+}
+
+function chatKey(e){
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    chatSend();
+  }
+}
+
+function chatResize(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 90) + 'px';
+}
+
+function chatSend(){
+  var inp = document.getElementById('chat-input');
+  if(!inp) return;
+  var text = inp.value.trim();
+  if(!text || chatTyping) return;
+  inp.value = '';
+  inp.style.height = 'auto';
+  chatEnviarTexto(text);
+}
+
+function chatEnviarTexto(text){
+  if(chatTyping) return;
+  // Limpiar sugerencias
+  var sug = document.getElementById('chat-suggest');
+  if(sug) sug.innerHTML = '';
+
+  chatAddMsg('user', text);
+  CHAT_HISTORY.push({role:'user', content: text});
+
+  chatTyping = true;
+  document.getElementById('chat-send').disabled = true;
+  chatTypingStart();
+
+  // Construir mensajes para la API
+  var messages = CHAT_HISTORY.slice(-12); // máximo 12 turnos de contexto
+
+  // Pollinations AI — modelo mistral, sin auth
+  var payload = {
+    model: 'openai',
+    messages: [{role:'system', content: SYSTEM_PROMPT}].concat(messages),
+    seed: Math.floor(Math.random()*9999)
+  };
+
+  fetch('https://text.pollinations.ai/openai', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(function(data){
+    chatTypingEnd();
+    var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+      ? data.choices[0].message.content.trim()
+      : 'Lo siento, no he podido generar una respuesta. Inténtalo de nuevo.';
+    CHAT_HISTORY.push({role:'assistant', content: reply});
+    chatAddMsg('ai', reply);
+    // Sugerencias de seguimiento
+    chatSugerenciasContexto(text);
+  })
+  .catch(function(err){
+    chatTypingEnd();
+    chatAddMsg('ai', 'Ha habido un problema de conexión. Comprueba tu internet e inténtalo de nuevo.');
+    console.error('[Chat IA]', err);
+  })
+  .finally(function(){
+    chatTyping = false;
+    var sendBtn = document.getElementById('chat-send');
+    if(sendBtn) sendBtn.disabled = false;
+    var inp = document.getElementById('chat-input');
+    if(inp) inp.focus();
+  });
+}
+
+function chatSugerenciasContexto(pregunta){
+  var p = pregunta.toLowerCase();
+  var sug = [];
+  if(p.includes('préstam') || p.includes('hipotec') || p.includes('cuota')){
+    sug = ['¿Qué es el TAE?','Diferencia préstamo vs hipoteca','¿Cómo se calcula la cuota mensual?','¿Qué es el período de carencia?'];
+  } else if(p.includes('bolsa') || p.includes('accion') || p.includes('bursátil')){
+    sug = ['¿Qué es el PER?','¿Cómo se lee una vela japonesa?','¿Qué es el IBEX 35?','Diferencia entre OPA y OPV'];
+  } else if(p.includes('seguro')){
+    sug = ['¿Qué es la prima de seguro?','Tipos de seguros empresariales','¿Qué cubre el seguro de vida?','¿Qué es la franquicia?'];
+  } else if(p.includes('van') || p.includes('tir') || p.includes('inversion') || p.includes('inversión')){
+    sug = ['¿Cuándo es rentable una inversión?','Diferencia VAN vs TIR','¿Qué es el payback?','¿Qué es el coste de capital?'];
+  } else if(p.includes('presupuest')){
+    sug = ['¿Qué es el presupuesto de tesorería?','Tipos de presupuestos empresariales','¿Cómo se hace una previsión de ventas?'];
+  } else {
+    sug = ['Dame un ejemplo práctico','¿Puedes resumirlo?','¿Cómo cae esto en el examen?','¿Qué más debo saber sobre esto?'];
+  }
+  chatSugerencias(sug);
+}
+
+// Exponer globalmente
+window.chatToggle = chatToggle;
+window.chatSend = chatSend;
+window.chatClear = chatClear;
+window.chatKey = chatKey;
+window.chatResize = chatResize;
+
+})();
+
 </script>
 
 </div><!-- /app-shell -->
 
 
+
+
+<!-- CHAT IA -->
+<button id="chat-fab" onclick="chatToggle()" title="Asistente IA">
+  💬
+  <div class="chat-badge" id="chat-badge"></div>
+</button>
+<div id="chat-panel">
+  <div id="chat-header">
+    <div class="ch-avatar">🤖</div>
+    <div class="ch-info">
+      <div class="ch-name">Asistente GestiónFin</div>
+      <div class="ch-sub">IA de estudio · Gestión Financiera</div>
+    </div>
+    <button id="chat-clear" onclick="chatClear()" title="Nueva conversación">↺ Limpiar</button>
+    <button class="ch-close" onclick="chatToggle()">✕</button>
+  </div>
+  <div id="chat-msgs"></div>
+  <div id="chat-suggest"></div>
+  <div id="chat-input-row">
+    <textarea id="chat-input" placeholder="Escribe tu pregunta…" rows="1" onkeydown="chatKey(event)" oninput="chatResize(this)"></textarea>
+    <button id="chat-send" onclick="chatSend()" title="Enviar">➤</button>
+  </div>
+</div>
 
 <!-- ONBOARDING -->
 <div id="ob-overlay" style="display:none;opacity:0"></div>
