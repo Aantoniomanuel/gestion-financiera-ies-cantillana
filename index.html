@@ -1913,8 +1913,10 @@ function renderSeccionCalificaciones(sec){
     '<div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>'+
     'Cargando alumnos…</div>';
 
-  supa.from('perfiles').select('id,nombre,apellidos,email,avatar_url').eq('rol','alumno').order('apellidos')
+  supa.from('perfiles').select('id,nombre,email,avatar_url').eq('rol','alumno').order('nombre')
     .then(function(result){
+      console.log('[GF-Calif] Supabase perfiles result:', result);
+      console.log('[GF-Calif] error:', result.error, '| data:', result.data);
       var perfs = result.data || [];
       if(perfs.length){
         var mapaLocal = {};
@@ -1924,16 +1926,20 @@ function renderSeccionCalificaciones(sec){
           return {
             id: p.id,
             nombre: p.nombre || local.nombre || '',
-            apellidos: p.apellidos || local.apellidos || '',
+            apellidos: '',
             email: p.email || local.email || '',
             avatar_url: p.avatar_url || ''
           };
         });
         save();
       }
+      console.log('[GF-Calif] DB.alumnos tras sync:', DB.alumnos.length, DB.alumnos);
       _renderCalifInner(sec);
     })
-    .catch(function(){ _renderCalifInner(sec); });
+    .catch(function(err){
+      console.error('[GF-Calif] catch error:', err);
+      _renderCalifInner(sec);
+    });
 }
 
 function _renderCalifInner(sec){
