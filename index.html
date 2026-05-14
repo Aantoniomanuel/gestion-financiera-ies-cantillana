@@ -11433,7 +11433,8 @@ async function crearActividad(){
   var {error}=await supa.from('actividades').insert({
     docente_id:USUARIO_ACTUAL.id,grupo_id:GRUPO_ID_ACTUAL,simulador_id:sim.id,
     titulo,nivel,fecha_limite:fecha||null,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT,
-    activa:true,ce_vinculados:ceVinc
+    activa:true,ce_vinculados:ceVinc,
+    ra:'',ce:'',descripcion:'',modo_examen:false
   });
   if(error){flash('Error: '+error.message,'#dc2626');return;}
   flash('✅ Actividad creada'+(ceVinc.length?' con '+ceVinc.length+' CE vinculados':''),'#16a34a');
