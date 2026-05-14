@@ -1908,11 +1908,40 @@ function procesarExcel(file, sec){
 
 // ── LIBRO DE CALIFICACIONES ───────────────────────────
 function renderSeccionCalificaciones(sec){
+  // Mostrar spinner mientras se cargan alumnos desde Supabase
+  sec.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:180px;color:#9ca3af;gap:10px">'+
+    '<div style="width:20px;height:20px;border:2px solid #ccc;border-top-color:#1a2744;border-radius:50%;animation:spin .7s linear infinite"></div>'+
+    'Cargando alumnos…</div>';
+
+  supa.from('perfiles').select('id,nombre,apellidos,email,avatar_url').eq('rol','alumno').order('apellidos')
+    .then(function(result){
+      var perfs = result.data || [];
+      if(perfs.length){
+        var mapaLocal = {};
+        DB.alumnos.forEach(function(al){ mapaLocal[al.id]=al; });
+        DB.alumnos = perfs.map(function(p){
+          var local = mapaLocal[p.id] || {};
+          return {
+            id: p.id,
+            nombre: p.nombre || local.nombre || '',
+            apellidos: p.apellidos || local.apellidos || '',
+            email: p.email || local.email || '',
+            avatar_url: p.avatar_url || ''
+          };
+        });
+        save();
+      }
+      _renderCalifInner(sec);
+    })
+    .catch(function(){ _renderCalifInner(sec); });
+}
+
+function _renderCalifInner(sec){
   sec.innerHTML='';
   initPond();
 
   if(!DB.alumnos.length){
-    sec.innerHTML='<div class="card"><p style="color:var(--muted);font-size:14px;text-align:center;padding:2rem">Añade alumnos en "Mis Alumnos" para ver el libro de calificaciones.</p></div>';
+    sec.innerHTML='<div class="card"><p style="color:var(--muted);font-size:14px;text-align:center;padding:2rem">Sin alumnos registrados. Los alumnos aparecen aquí cuando acceden a la app con su cuenta educativa (@g.educaand.es).</p></div>';
     return;
   }
 
