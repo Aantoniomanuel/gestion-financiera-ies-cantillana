@@ -37,13 +37,8 @@ function loadSim(id){
           ifr.contentWindow.postMessage({
             tipo:      'actividad_info_'+id.replace('sim-',''),
             actividad: {id: pending.actId, nivel: pending.nivel},
-            entregaId: pending.entregaId,
-            tiempoMin: pending.tiempoMin || 0   // ← tiempo límite en minutos
+            entregaId: pending.entregaId
           },'*');
-          // Arrancar temporizador si la actividad tiene tiempo límite
-          if(pending.tiempoMin && pending.tiempoMin > 0){
-            iniciarTemporizador(new Date().toISOString(), pending.tiempoMin, pending.actId);
-          }
           // Go to ejercicio mode and generate new case - wait longer for DOM ready
           setTimeout(function(){
             ifr.contentWindow.postMessage({tipo:'ir_a_ejercicio'},'*');
@@ -859,7 +854,7 @@ async function renderMisActividades(){
               (lim?' · Límite: '+lim.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'</div>'+
             (iniciada?'<div style="font-size:11px;color:var(--amber);margin-top:4px">⚠️ Iniciada pero sin entregar</div>':'')+
           '</div>'+
-          '<button class="btn-calc" data-actid="'+act.id+'" data-simcod="'+sim.codigo+'" data-nivel="'+act.nivel+'" data-tiempo="'+(act.tiempo_limite_minutos||0)+'"'+
+          '<button class="btn-calc" data-actid="'+act.id+'" data-simcod="'+sim.codigo+'" data-nivel="'+act.nivel+'"'+
             ' onclick="iniciarDesdePanel(this)" style="padding:8px 20px;font-size:13px;white-space:nowrap">'+
             (iniciada?'▶ Continuar':'▶ Realizar actividad')+
           '</button>'+
@@ -911,10 +906,9 @@ async function renderMisActividades(){
 }
 
 async function iniciarDesdePanel(btn){
-  var actId     = btn.getAttribute('data-actid');
-  var simCod    = btn.getAttribute('data-simcod');
-  var nivel     = btn.getAttribute('data-nivel');
-  var tiempoMin = parseInt(btn.getAttribute('data-tiempo')) || 0;
+  var actId  = btn.getAttribute('data-actid');
+  var simCod = btn.getAttribute('data-simcod');
+  var nivel  = btn.getAttribute('data-nivel');
   if(!actId || !simCod) return;
 
   btn.disabled = true;
@@ -934,8 +928,7 @@ async function iniciarDesdePanel(btn){
     actId:     actId,
     simCod:    simCod,
     nivel:     nivel,
-    entregaId: entrega.id,
-    tiempoMin: tiempoMin    // ← tiempo límite en minutos (0 = sin límite)
+    entregaId: entrega.id
   };
 
   // Navigate to simulator — loadSim will detect _pendingActividad

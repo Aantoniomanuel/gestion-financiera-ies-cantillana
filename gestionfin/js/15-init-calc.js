@@ -310,5 +310,7 @@ SIM_HTML["sim-seguros"] = "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n<meta ch
 // ══════════════════════════════════════════════════════
 //  SUPABASE + SISTEMA COMPLETO
 // ══════════════════════════════════════════════════════
-// supa se inicializa en index.html justo tras cargar el CDN de Supabase
+const SUPA_URL  = 'https://aqeahkwedkjwdvtpfaqm.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxZWFoa3dlZGtqd2R2dHBmYXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTU3NDIsImV4cCI6MjA5MjQ3MTc0Mn0.TU-awshpvPml6QX8jM8lw_BBXWiZM8V6olRPVaIH8Gg';
+const supa = supabase.createClient(SUPA_URL, SUPA_ANON);
 
