@@ -1,0 +1,212 @@
+<body>
+<script>
+// Safety stub for toggleGroup (called from onclick before main script loads)
+function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=document.getElementById('sub-'+id); if(!btn||!sub)return; btn.classList.toggle('open'); sub.classList.toggle('open'); }
+</script>
+
+
+<div id="flash-msg" class="flash"></div>
+
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:#1a2744;z-index:9999;display:flex;align-items:center;justify-content:center">
+  <div style="text-align:center;padding:2.5rem 2rem;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:420px;width:90%">
+    <div style="font-size:3rem;margin-bottom:1rem">📊</div>
+    <div style="font-family:Georgia,serif;font-size:1.6rem;font-weight:700;color:#1a2744;margin-bottom:.4rem">Gestión Financiera</div>
+    <div style="font-size:13px;color:#9ca3af;margin-bottom:2rem">IES Cantillana · CFGS Administración y Finanzas</div>
+    <button id="btn-google-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 20px;border:1.5px solid #e2ddd4;border-radius:12px;background:#fff;cursor:pointer;font-size:15px;font-weight:600;color:#1a2744">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20">
+      Entrar con Google
+    </button>
+    <div id="login-error" style="margin-top:12px;font-size:12px;color:#dc2626;display:none"></div>
+    <div style="margin-top:1.5rem;font-size:11px;color:#9ca3af">Accede con tu cuenta <strong>@g.educaand.es</strong></div>
+  </div>
+</div>
+
+<div id="loading-screen" style="position:fixed;inset:0;background:#1a2744;z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#c9a84c;border-radius:50%;animation:spin .7s linear infinite"></div>
+  <div style="font-family:Georgia,serif;font-size:1.2rem;color:#fff;opacity:.7">Cargando…</div>
+</div>
+
+<div class="shell" id="app-shell" style="display:none">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="s-logo">
+      <div class="s-mark">
+        <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+          <path d="M4 20L14 6L24 20" stroke="#1a2744" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 20L14 12L20 20" stroke="#1a2744" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="14" cy="22" r="2" fill="#1a2744"/>
+        </svg>
+      </div>
+      <div class="s-title">GestiónFin</div>
+      <div class="s-sub">IES Cantillana · Sevilla</div>
+    </div>
+
+    <div class="sidebar-nav">
+    <div class="s-sec">Gestión Financiera · CFGS AF</div>
+    <button class="nav-item active" id="ni-dashboard" onclick="goTo('dashboard',this)">🏠 Inicio</button>
+    <button class="nav-item" id="ni-calendario" onclick="goTo('calendario',this)">📅 Calendario</button>
+
+    <!-- BLOQUES DESPLEGABLE -->
+    <button class="nav-group-btn" id="grp-ud" onclick="toggleGroup('ud')">
+      <span>📚 Bloques del Módulo</span>
+      <span class="nav-arrow">▶</span>
+    </button>
+    <div class="nav-submenu" id="sub-ud">
+      <button class="nav-subitem" data-ud="ud1" onclick="goTo('ud1',this)">B1 · Necesidades de Financiación</button>
+      <button class="nav-subitem" data-ud="ud2" onclick="goTo('ud2',this)">B2-3 · Productos Financieros</button>
+      <button class="nav-subitem" data-ud="ud3" onclick="goTo('ud3',this)">B4 · Los Seguros</button>
+      <button class="nav-subitem" data-ud="ud4" onclick="goTo('ud4',this)">B5 · Inversiones</button>
+      <button class="nav-subitem" data-ud="ud5" onclick="goTo('ud5',this)">B6 · Presupuestos</button>
+    </div>
+
+    <!-- HERRAMIENTAS DESPLEGABLE -->
+    <button class="nav-group-btn" id="grp-herr" onclick="toggleGroup('herr')">
+      <span>🛠 Herramientas</span>
+      <span class="nav-arrow">▶</span>
+    </button>
+    <div class="nav-submenu" id="sub-herr">
+      <button class="nav-sub2" id="ns-indices" onclick="abrirIndicesBME()">🌍 Índices BME ↗</button>
+      <button class="nav-sub2" id="ns-kiosco" onclick="goTo('kiosco',this)">📰 El Kiosco</button>
+      <button class="nav-sub2" id="ns-conceptos" onclick="goTo('conceptos-bolsa',this)">📚 Conceptos Bursátiles</button>
+    </div>
+
+    <!-- SIMULADORES -->
+    <button class="nav-group-btn" id="grp-sims" onclick="toggleGroup('sims')">
+      <span>🧮 Simuladores</span><span class="nav-arrow">▶</span>
+    </button>
+    <div class="nav-submenu" id="sub-sims">
+      <button class="nav-sub2" id="ns-bolsa" onclick="goTo('bolsa',this)">📊 Simulador de Bolsa</button>
+      <button class="nav-sub2" id="ns-sim-prestamos" onclick="goTo('sim-prestamos',this)">🏦 Préstamos e Hipotecas</button>
+      <button class="nav-sub2" id="ns-sim-pb" onclick="goTo('sim-pb',this)">💳 Productos Bancarios</button>
+      <button class="nav-sub2" id="ns-sim-presupuestos" onclick="goTo('sim-presupuestos',this)">📋 Presupuestos</button>
+      <button class="nav-sub2" id="ns-sim-inversiones" onclick="goTo('sim-inversiones',this)">📈 Inversiones</button>
+      <button class="nav-sub2" id="ns-sim-aef" onclick="goTo('sim-aef',this)">📊 Estados Financieros</button>
+      <button class="nav-sub2" id="ns-sim-seguros" onclick="goTo('sim-seguros',this)">🛡️ Seguros</button>
+    </div>
+
+    <!-- ACTIVIDADES -->
+    <button class="nav-item" id="nav-actividades" onclick="goTo('actividades',this)">📝 Actividades evaluables</button>
+    <button class="nav-item" id="nav-mis-actividades" onclick="goTo('mis-actividades',this)" style="display:none">📋 Mis actividades <span class="nav-badge gold" id="badge-mis-act" style="display:none"></span></button>
+
+    <div class="s-sec" id="sec-prof">Área Profesor</div>
+    
+    <button class="nav-item" id="nav-banco" onclick="goTo('banco',this)">🗃 Banco de Preguntas</button>
+    <button class="nav-item" id="nav-alumnos" onclick="goTo('alumnos',this)">👥 Mis Alumnos</button>
+    <button class="nav-item" id="nav-eval" onclick="goTo('evaluacion',this)">📊 Evaluación RA/CE</button>
+    <button class="nav-item" id="nav-materiales" onclick="goTo('materiales',this)">📁 Materiales</button>
+
+    </div><!-- end sidebar-nav -->
+    <button class="nav-item" id="nav-nuevo-bloque" onclick="abrirModalNuevoBloque()" style="color:var(--gold-light);border-top:1px solid rgba(255,255,255,.07);margin-top:4px">➕ Nuevo bloque</button>
+    <div class="s-footer">
+      <div class="s-user">
+        <div class="avatar" id="u-avatar">P</div>
+        <div><div class="u-name" id="u-name">Profesor</div><div class="u-role" id="u-role">Gestión Financiera</div></div>
+      </div>
+      <div class="rol-btns">
+        <button class="rol-btn active" id="rb-prof" onclick="setRol('profesor')">Profesor</button>
+        <button class="rol-btn" id="rb-alu" onclick="setRol('alumno')">Alumno</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="ph"><div><div id="dash-saludo" style="font-size:13px;color:var(--muted);font-weight:400;margin-bottom:4px"></div><h1 class="pt">Gestión Financiera</h1><p class="ps">CFGS Administración y Finanzas · IES Cantillana · Curso 2026-27</p></div></div>
+      <div class="grid-s" id="dash-stats">
+        <div class="sc"><div class="sn" id="dash-bloques">5</div><div class="sl">Bloques del módulo</div></div>
+        <div class="sc"><div class="sn" id="dash-act">0</div><div class="sl">Actividades creadas</div></div>
+        <div class="sc"><div class="sn" id="dash-alum">0</div><div class="sl">Alumnos</div></div>
+        <div class="sc"><div class="sn" id="dash-horas">126</div><div class="sl">Horas totales</div></div>
+      </div>
+      <!-- Resumen alumno (oculto para profesor) -->
+      <div id="dash-resumen-alumno" style="display:none;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem">
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-sims">0</div><div class="rs-lbl">Ejercicios completados</div></div></div>
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-entregas">0</div><div class="rs-lbl">Actividades entregadas</div></div></div>
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-pct">0%</div><div class="rs-lbl">Progreso global</div></div></div>
+        <div class="card" style="padding:0"><div class="resumen-stat"><div class="rs-num" id="dra-racha">—</div><div class="rs-lbl">Último acceso</div></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:1.25rem;align-items:start">
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:12px">📚 Bloques del módulo</h3>
+          <div id="dash-uds"></div>
+        </div>
+        <div class="card"><h3 style="font-size:14px;font-weight:600;margin-bottom:12px">📅 Próximos eventos</h3>
+          <div id="dash-eventos"><p style="color:var(--muted);font-size:13px">Sin eventos próximos</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendario -->
+    <div class="page" id="page-calendario">
+      <div id="cal-root"></div>
+    </div>
+
+    <!-- Ejercicios -->
+    <div class="page" id="page-ejercicios">
+      <div class="ph"><div><h1 class="pt">Ejercicios</h1><p class="ps">Actividades de aprendizaje del módulo</p></div></div>
+      <div id="ejercicios-lista"></div>
+    </div>
+
+    <!-- Bloques / UDs -->
+    <div class="page" id="page-ud1"><div id="cont-ud1"></div></div>
+    <div class="page" id="page-ud2"><div id="cont-ud2"></div></div>
+    <div class="page" id="page-ud3"><div id="cont-ud3"></div></div>
+    <div class="page" id="page-ud4"><div id="cont-ud4"></div></div>
+    <div class="page" id="page-ud5"><div id="cont-ud5"></div></div>
+
+    <!-- Bolsa -->
+    <div class="page" id="page-bolsa"><div id="bolsa-root"></div></div>
+    <div class="page" id="page-conceptos-bolsa"><div id="conceptos-bolsa-root"></div></div>
+    <div class="page" id="page-kiosco"><div id="kiosco-root"></div></div>
+
+    <!-- Simuladores -->
+    <div class="page" id="page-sim-prestamos"><div id="sim-prestamos-root" style="height:calc(100vh - 58px)"></div></div>
+    <div class="page" id="page-sim-pb"><div id="sim-pb-root" style="height:calc(100vh - 58px)"></div></div>
+    <div class="page" id="page-sim-presupuestos"><div id="sim-presupuestos-root" style="height:calc(100vh - 58px)"></div></div>
+    <div class="page" id="page-sim-inversiones"><div id="sim-inversiones-root" style="height:calc(100vh - 58px)"></div></div>
+    <div class="page" id="page-sim-aef"><div id="sim-aef-root" style="height:calc(100vh - 58px)"></div></div>
+    <div class="page" id="page-sim-seguros"><div id="sim-seguros-root" style="height:calc(100vh - 58px)"></div></div>
+    <!-- Actividades evaluables -->
+    <div class="page" id="page-actividades">
+      <div class="ph"><div><h1 class="pt">Actividades evaluables</h1>
+        <p class="ps">Crea y gestiona actividades para tus alumnos</p></div></div>
+      <div id="actividades-cont"></div>
+    </div>
+
+    <!-- Mis actividades (alumno) -->
+    <div class="page" id="page-mis-actividades">
+      <div class="ph"><div><h1 class="pt">Mis actividades</h1>
+        <p class="ps">Registro de tus actividades evaluables</p></div></div>
+      <div id="mis-actividades-cont"></div>
+    </div>
+
+    <!-- Área profesor -->
+
+    <div class="page" id="page-alumnos">
+      <div class="ph"><div><h1 class="pt">Mis Alumnos</h1><p class="ps">Los alumnos aparecen cuando acceden · <span id="alumnos-sub"></span></p></div><button class="btn btn-sm" onclick="renderAlumnos()" style="font-size:12px">↻ Actualizar</button></div>
+      <div id="alumnos-grid"></div>
+    </div>
+    <div class="page" id="page-evaluacion">
+      <div class="ph"><div><h1 class="pt">Evaluación RA/CE</h1><p class="ps">Resultados de Aprendizaje y Criterios de Evaluación</p></div></div>
+      <div id="eval-cont"></div>
+    </div>
+    <div class="page" id="page-materiales">
+      <div class="ph"><div><h1 class="pt">Materiales</h1><p class="ps">Recursos del módulo</p></div>
+      <button class="btn btn-p" onclick="abrirModalMaterial()">+ Añadir material</button></div>
+      <div id="materiales-lista"></div>
+    </div>
+    <div class="page" id="page-banco"><div id="banco-root"></div></div>
+    <div class="page" id="page-test"><div id="test-root"></div></div>
+  </main>
+
+<div class="modal-ov" id="modal">
+  <div class="modal">
+    <div class="mh"><span class="mt" id="modal-titulo"></span><button onclick="cerrarModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">✕</button></div>
+    <div class="mb" id="modal-cuerpo"></div>
+    <div class="mf" id="modal-pie"></div>
+  </div>
+</div>
+</div>
+
