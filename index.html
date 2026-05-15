@@ -11691,9 +11691,81 @@ async function comprobarActividadActiva(simCod){
 async function iniciarEntrega(actId,datos){
   if(!USUARIO_ACTUAL)return null;
   var {data:ex}=await supa.from('entregas').select('*').eq('actividad_id',actId).eq('alumno_id',USUARIO_ACTUAL.id).maybeSingle();
-  if(ex)return ex;
-  var {data:nueva}=await supa.from('entregas').insert({actividad_id:actId,alumno_id:USUARIO_ACTUAL.id,datos_caso:datos||{},respuestas:{}}).select().single();
+  if(ex){
+    // Si ya existe y tiene tiempo límite, relanzar el temporizador
+    if(ex.iniciada_at){
+      var {data:act}=await supa.from('actividades').select('tiempo_limite_minutos').eq('id',actId).single();
+      if(act&&act.tiempo_limite_minutos) iniciarTemporizador(ex.iniciada_at, act.tiempo_limite_minutos, actId);
+    }
+    return ex;
+  }
+  var ahora=new Date().toISOString();
+  var {data:nueva}=await supa.from('entregas').insert({actividad_id:actId,alumno_id:USUARIO_ACTUAL.id,datos_caso:datos||{},respuestas:{},iniciada_at:ahora}).select().single();
+  // Lanzar temporizador si la actividad tiene tiempo límite
+  if(nueva){
+    var {data:act}=await supa.from('actividades').select('tiempo_limite_minutos').eq('id',actId).single();
+    if(act&&act.tiempo_limite_minutos) iniciarTemporizador(ahora, act.tiempo_limite_minutos, actId);
+  }
   return nueva;
+}
+
+// ── Temporizador para actividades con tiempo límite ───────────
+var _timerInterval = null;
+var _timerEntregaId = null;
+
+function iniciarTemporizador(iniciadaAt, minutos, actId){
+  if(_timerInterval) clearInterval(_timerInterval);
+  // Crear o reusar el widget del temporizador
+  var existing = document.getElementById('gf-timer');
+  if(!existing){
+    var t = document.createElement('div');
+    t.id = 'gf-timer';
+    t.style.cssText = 'position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:8500;background:#1a2744;color:#fff;border-radius:12px;padding:10px 28px;font-family:IBM Plex Mono,monospace;font-size:1.3rem;font-weight:700;letter-spacing:2px;box-shadow:0 4px 20px rgba(0,0,0,.35);display:flex;align-items:center;gap:12px;min-width:160px;justify-content:center';
+    t.innerHTML = '<span style="font-size:1rem">⏱</span><span id="gf-timer-display">--:--</span>';
+    document.body.appendChild(t);
+  }
+  var fin = new Date(iniciadaAt).getTime() + minutos * 60 * 1000;
+  function tick(){
+    var resto = fin - Date.now();
+    if(resto <= 0){
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      document.getElementById('gf-timer-display').textContent = '00:00';
+      document.getElementById('gf-timer').style.background = '#b91c1c';
+      // Entregar automáticamente
+      entregarPorTiempo(actId);
+      return;
+    }
+    var mins = Math.floor(resto/60000);
+    var secs = Math.floor((resto%60000)/1000);
+    var display = String(mins).padStart(2,'0')+':'+String(secs).padStart(2,'0');
+    document.getElementById('gf-timer-display').textContent = display;
+    // Avisos visuales
+    var el = document.getElementById('gf-timer');
+    if(resto < 60000) el.style.background = '#b91c1c'; // rojo último minuto
+    else if(resto < 300000) el.style.background = '#92400e'; // ámbar 5 min
+    else el.style.background = '#1a2744';
+  }
+  tick();
+  _timerInterval = setInterval(tick, 1000);
+}
+
+async function entregarPorTiempo(actId){
+  // Buscar la entrega activa del alumno
+  if(!USUARIO_ACTUAL) return;
+  var {data:ent} = await supa.from('entregas').select('id').eq('actividad_id',actId).eq('alumno_id',USUARIO_ACTUAL.id).maybeSingle();
+  if(!ent) return;
+  // Marcar como entregada automáticamente
+  await supa.from('entregas').update({entregada_at: new Date().toISOString(), respuestas: {auto_entregada: true}}).eq('id',ent.id);
+  // Ocultar temporizador
+  var t = document.getElementById('gf-timer');
+  if(t) t.remove();
+  // Avisar al alumno
+  flash('⏱ Tiempo agotado — actividad entregada automáticamente', '#b91c1c');
+  // Notificar al simulador activo para que se bloquee
+  document.querySelectorAll('.page.active iframe').forEach(function(ifr){
+    try{ ifr.contentWindow.postMessage({tipo:'tiempo_agotado'},'*'); }catch(e){}
+  });
 }
 
 // ── Receptor de mensajes de simuladores ──────────────
@@ -11965,9 +12037,10 @@ async function renderActividades(){
   Object.keys(SIMS_INFO).forEach(function(k){html+='<option value="'+k+'">'+SIMS_INFO[k].nombre+'</option>';});
   html+='</select></div>';
   html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Nivel</div><select id="act-nivel" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px"><option value="basico">⭐ Básico</option><option value="medio" selected>⭐⭐ Medio</option><option value="avanzado">⭐⭐⭐ Avanzado</option></select></div>';
-  html+='</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">';
+  html+='</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">';
   html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Título</div><input id="act-titulo" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" type="text" placeholder="Ej: AE1 — Préstamos"></div>';
   html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="act-fecha" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" type="datetime-local"></div>';
+  html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">⏱ Tiempo (min)</div><input id="act-tiempo" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" min="1" max="300" placeholder="Sin límite"></div>';
   html+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálc/Int/Teo</div><div style="display:flex;gap:6px"><input id="act-p-calc" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="60"><input id="act-p-int" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="30"><input id="act-p-teo" style="width:55px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" type="number" value="10"></div></div>';
   html+='</div>';
   html+=buildSelectorRACE('act-race', []);
@@ -11998,7 +12071,7 @@ async function renderActividades(){
           chipsHtml+='</div>';
         });
       } else { chipsHtml='<span style="font-size:11px;color:#d1ccc6">—</span>'; }
-      html+='<tr><td style="padding:10px 14px"><div style="font-weight:600;font-size:13px">'+act.titulo+'</div><div style="font-size:11px;color:#9ca3af">'+act.peso_calculo+'% calc · '+act.peso_interpretacion+'% int · '+act.peso_teoria+'% teo</div></td><td style="text-align:center;font-size:12px">'+(s.nombre||'—')+'</td><td style="text-align:center;font-size:12px">'+nlbl+'</td><td style="padding:8px 12px">'+chipsHtml+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(lim?lim.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'Sin límite')+'</td><td style="text-align:center;font-weight:700;color:#1a2744">'+ea.length+'</td><td style="text-align:center"><span style="font-size:12px;font-weight:700;color:'+sc+'">'+slbl+'</span></td>';
+      html+='<tr><td style="padding:10px 14px"><div style="font-weight:600;font-size:13px">'+act.titulo+'</div><div style="font-size:11px;color:#9ca3af">'+act.peso_calculo+'% calc · '+act.peso_interpretacion+'% int · '+act.peso_teoria+'% teo</div></td><td style="text-align:center;font-size:12px">'+(s.nombre||'—')+'</td><td style="text-align:center;font-size:12px">'+nlbl+'</td><td style="padding:8px 12px">'+chipsHtml+'</td><td style="text-align:center;font-size:12px;color:#9ca3af">'+(lim?lim.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'Sin límite')+(act.tiempo_limite_minutos?' · ⏱'+act.tiempo_limite_minutos+'min':'')+'</td><td style="text-align:center;font-weight:700;color:#1a2744">'+ea.length+'</td><td style="text-align:center"><span style="font-size:12px;font-weight:700;color:'+sc+'">'+slbl+'</span></td>';
       html+='<td style="text-align:center;white-space:nowrap"><button class="btn-sm" data-id="'+actId+'" onclick="verEntregas(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">Ver</button><button class="btn-sm" data-id="'+actId+'" data-activa="'+act.activa+'" onclick="toggleActividad(this.getAttribute(\'data-id\'),this.getAttribute(\'data-activa\')===\'true\')" style="font-size:11px;color:'+(act.activa?'var(--red)':'var(--green)')+';margin-right:2px">'+(act.activa?'⏸':'▶')+'</button><button class="btn-sm" data-id="'+actId+'" onclick="editarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;margin-right:2px">✏️</button><button class="btn-sm" data-id="'+actId+'" onclick="eliminarActividad(this.getAttribute(\'data-id\'))" style="font-size:11px;color:var(--red)">🗑</button></td></tr>';
     });
     html+='</tbody></table></div></div></div>';
@@ -12048,6 +12121,7 @@ async function crearActividad(){
   var pC=parseInt(document.getElementById('act-p-calc').value)||60;
   var pI=parseInt(document.getElementById('act-p-int').value)||30;
   var pT=parseInt(document.getElementById('act-p-teo').value)||10;
+  var tLim=parseInt(document.getElementById('act-tiempo').value)||null;
   if(!titulo){flash('Introduce un título','#dc2626');return;}
   if(pC+pI+pT!==100){flash('Los pesos deben sumar 100%','#dc2626');return;}
   var ceVinc=recogerCEVinculados('act-race');
@@ -12055,7 +12129,7 @@ async function crearActividad(){
   if(!sim){flash('Simulador no encontrado','#dc2626');return;}
   var {error}=await supa.from('actividades').insert({
     docente_id:USUARIO_ACTUAL.id,grupo_id:GRUPO_ID_ACTUAL,simulador_id:sim.id,
-    titulo,nivel,fecha_limite:fecha||null,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT,
+    titulo,nivel,fecha_limite:fecha||null,tiempo_limite_minutos:tLim,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT,
     activa:true,ce_vinculados:ceVinc,
     ra:'',ce:'',descripcion:'',modo_examen:false
   });
@@ -12087,9 +12161,10 @@ async function editarActividad(actId){
   m.innerHTML='<div style="background:#fff;border-radius:12px;padding:1.5rem;max-width:680px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
     '<div style="font-size:1.1rem;font-weight:700;color:#1a2744;margin-bottom:1rem">✏️ Editar actividad</div>'+
     '<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Título</div><input id="edit-titulo" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+act.titulo+'"></div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">'+
     '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Nivel</div><select id="edit-nivel" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px"><option value="basico"'+(act.nivel==='basico'?' selected':'')+'>⭐ Básico</option><option value="medio"'+(act.nivel==='medio'?' selected':'')+'>⭐⭐ Medio</option><option value="avanzado"'+(act.nivel==='avanzado'?' selected':'')+'>⭐⭐⭐ Avanzado</option></select></div>'+
-    '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="edit-fecha" type="datetime-local" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+fv+'"></div></div>'+
+    '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Fecha límite</div><input id="edit-fecha" type="datetime-local" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px" value="'+fv+'"></div>'+
+    '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">⏱ Tiempo (min)</div><input id="edit-tiempo" type="number" min="1" max="300" placeholder="Sin límite" style="width:100%;padding:7px 10px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center" value="'+(act.tiempo_limite_minutos||'')+'"></div></div>'+
     '<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Pesos Cálculo/Interpretación/Teoría</div><div style="display:flex;gap:8px"><input id="edit-pc" type="number" value="'+act.peso_calculo+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pi" type="number" value="'+act.peso_interpretacion+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"><input id="edit-pt" type="number" value="'+act.peso_teoria+'" style="width:70px;padding:7px 8px;border:1.5px solid #d1ccc6;border-radius:6px;font-size:13px;text-align:center"></div></div>'+
     buildSelectorRACE('edit-race', ceActuales)+
     '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">'+
@@ -12106,10 +12181,11 @@ async function guardarEdicion(actId){
   var pC=parseInt(document.getElementById('edit-pc').value)||60;
   var pI=parseInt(document.getElementById('edit-pi').value)||30;
   var pT=parseInt(document.getElementById('edit-pt').value)||10;
+  var tLim=parseInt(document.getElementById('edit-tiempo').value)||null;
   if(!titulo){flash('El título no puede estar vacío','#dc2626');return;}
   if(pC+pI+pT!==100){flash('Los pesos deben sumar 100%','#dc2626');return;}
   var ceVinc=recogerCEVinculados('edit-race');
-  var {error}=await supa.from('actividades').update({titulo,nivel,fecha_limite:fecha||null,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT,ce_vinculados:ceVinc}).eq('id',actId);
+  var {error}=await supa.from('actividades').update({titulo,nivel,fecha_limite:fecha||null,tiempo_limite_minutos:tLim,peso_calculo:pC,peso_interpretacion:pI,peso_teoria:pT,ce_vinculados:ceVinc}).eq('id',actId);
   if(error){flash('Error: '+error.message,'#dc2626');return;}
   document.getElementById('edit-modal').remove();
   flash('✅ Actividad actualizada'+(ceVinc.length?' · '+ceVinc.length+' CE vinculados':''),'#16a34a');
