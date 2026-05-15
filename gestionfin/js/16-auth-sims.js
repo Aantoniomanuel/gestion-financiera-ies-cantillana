@@ -98,14 +98,14 @@ function mostrarLogin(){
   document.getElementById('app-shell').style.display='none';
 }
 function mostrarApp(){
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app-shell').style.display='';
+  var ls=document.getElementById('loading-screen'); if(ls)ls.style.display='none';
+  var li=document.getElementById('login-screen'); if(li)li.style.display='none';
+  var as=document.getElementById('app-shell'); if(as)as.style.display='';
 }
 function mostrarCargando(){
-  document.getElementById('loading-screen').style.display='flex';
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app-shell').style.display='none';
+  var ls=document.getElementById('loading-screen'); if(ls)ls.style.display='flex';
+  var li=document.getElementById('login-screen'); if(li)li.style.display='none';
+  var as=document.getElementById('app-shell'); if(as)as.style.display='none';
 }
 
 async function cargarPerfil(uid){

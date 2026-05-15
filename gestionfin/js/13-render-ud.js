@@ -908,6 +908,13 @@ function abrirModalEditarActEval(udId, actId){
         '<input class="fi" id="ae-password" type="text" placeholder="Dejar vacío = sin contraseña" value="'+(ae&&ae.password?ae.password:'')+'">'+
       '</div>'+
     '</div>'+
+    '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-radius:var(--r);margin:6px 0">'+
+      '<input type="checkbox" id="ae-bloqueo-feedback" style="width:16px;height:16px;cursor:pointer;accent-color:var(--navy);flex-shrink:0" '+(ae&&ae.bloqueoFeedback?'checked':'')+'>'+
+      '<div style="flex:1">'+
+        '<div style="font-size:13px;font-weight:600">🔒 Bloquear Comprobar y Ver respuesta hasta entregar</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">El alumno no podrá comprobar respuestas hasta que entregue la actividad evaluable</div>'+
+      '</div>'+
+    '</div>'+
     '<div style="padding:8px 12px;background:var(--surface2);border-radius:var(--r);font-size:12px;color:var(--muted);margin:8px 0">'+
       'ℹ️ El <strong>peso</strong> se calcula automáticamente según los CE vinculados.</div>'+
     (raceHtml?
@@ -1390,6 +1397,7 @@ function guardarActEvalModal(udId, actId, pregIds, adjuntos, rubrica, grupos){
   var corrManual = (document.getElementById('ae-manual')||{checked:false}).checked;
   var tiempoMin = parseInt((document.getElementById('ae-tiempo')||{value:'0'}).value)||0;
   var password  = (document.getElementById('ae-password')||{value:''}).value.trim();
+  var bloqueoFeedback = (document.getElementById('ae-bloqueo-feedback')||{checked:false}).checked;
   var pesosCalculo = {
     datos:   parseFloat((document.getElementById('ae-w-datos')||{value:'20'}).value)||20,
     formula: parseFloat((document.getElementById('ae-w-formula')||{value:'20'}).value)||20,
@@ -1421,7 +1429,7 @@ function guardarActEvalModal(udId, actId, pregIds, adjuntos, rubrica, grupos){
     if(ae){
       ae.titulo=titulo; ae.tipo=tipo; ae.desc=desc; ae.fecha=fecha; ae.fechaApertura=fechaApertura; ae.horaApertura=horaApertura;
       ae.penalizacion=pen; ae.correccionManual=corrManual;
-      ae.tiempoMin=tiempoMin; ae.password=password;
+      ae.tiempoMin=tiempoMin; ae.password=password; ae.bloqueoFeedback=bloqueoFeedback;
       ae.pesosCalculo=pesosCalculo;
       ae.esGrupo=esGrupo; ae.grupoMin=grupoMin; ae.grupoMax=grupoMax;
       ae.alumnoAdjuntos=alumnoAdjuntos;
@@ -1437,7 +1445,7 @@ function guardarActEvalModal(udId, actId, pregIds, adjuntos, rubrica, grupos){
   } else {
     ACT_EVAL[udId].push({ id:uid2(), titulo:titulo, peso:0, tipo:tipo,
       desc:desc, fecha:fecha, fechaApertura:fechaApertura, horaApertura:horaApertura, penalizacion:pen, correccionManual:corrManual,
-      tiempoMin:tiempoMin, password:password, pesosCalculo:pesosCalculo,
+      tiempoMin:tiempoMin, password:password, bloqueoFeedback:bloqueoFeedback, pesosCalculo:pesosCalculo,
       esGrupo:esGrupo, grupoMin:grupoMin, grupoMax:grupoMax, grupos:[], alumnoAdjuntos:alumnoAdjuntos,
       ordenAleatorio:ordenAleatorio, respuestasAleatorias:respuestasAleatorias, modoPantalla:modoPantalla,
       antitrampas:antitrampas, maxSalidas:maxSalidas, pantallaCompleta:pantallaCompleta,
@@ -1714,6 +1722,9 @@ function abrirModalActividad(act, pregs, esEval, udId){
 
   var body=document.createElement('div'); body.style.cssText='padding:20px;flex:1';
 
+  var _bloquearFeedback = !!(act.bloqueoFeedback && esEval);
+  body._bloquearFeedback = _bloquearFeedback;
+
   // Estado de respuestas
   var respuestas={};
   var corregido=false;
@@ -1732,6 +1743,14 @@ function abrirModalActividad(act, pregs, esEval, udId){
   progInfo.textContent='0 / '+pregs.length+' respondidas';
   progWrap.appendChild(progBar); progWrap.appendChild(progInfo);
   body.appendChild(progWrap);
+
+  if(_bloquearFeedback){
+    var _bf=document.createElement('div');
+    _bf.id='banner-bloqueo-feedback';
+    _bf.style.cssText='background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:#92400e';
+    _bf.innerHTML='<span style="font-size:1.1rem">🔒</span><div><strong>Modo evaluable:</strong> Los botones «Comprobar» están bloqueados. Entrega la actividad para ver la corrección.</div>';
+    body.appendChild(_bf);
+  }
 
   function actualizarProgreso(){
     var n=Object.keys(respuestas).length;
@@ -1779,7 +1798,7 @@ function abrirModalActividad(act, pregs, esEval, udId){
         if(pct!==null) pCard.style.borderColor='var(--green)';
         else pCard.style.borderColor='var(--amber)';
         actualizarProgreso();
-      }, act && act.pesosCalculo ? act.pesosCalculo : null);
+      }, act && act.pesosCalculo ? act.pesosCalculo : null, _bloquearFeedback);
     } else if(p.tipo==='test'||p.tipo==='vf'){
       // Opciones clicables
       var letters=['A','B','C','D'];
@@ -2207,6 +2226,18 @@ function mostrarEsperaCorreccion(body, secsLeft){
 
 // ── Corrección de actividad ───────────────────────────
 function corregirActividad(act, pregs, respuestas, body, esEval, udId, adjAlu){
+  if(body && body._bloquearFeedback){
+    body._bloquearFeedback=false;
+    var _bbs=body.querySelectorAll?body.querySelectorAll('[data-bloqueo-calculo="1"]'):[];
+    _bbs.forEach(function(btn){
+      btn.disabled=false; btn.style.opacity=''; btn.style.cursor='';
+      btn.innerHTML='✓ Corregir ejercicio';
+      if(btn._onCorregirRef){btn.onclick=btn._onCorregirRef; btn.removeAttribute('data-bloqueo-calculo');}
+    });
+    var _bb=document.getElementById('banner-bloqueo-feedback');
+    if(_bb) _bb.style.display='none';
+  }
+
   var correctas=0, incorrectas=0, blanco=0, manualPending=0;
   var pen = act.penalizacion||0;
   var notasManual = {}; // pregId → nota manual 0-10

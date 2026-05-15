@@ -1340,7 +1340,7 @@ function guardarCalculoPregunta(tipo, editId, nuevaBase){
 // ══════════════════════════════════════════════════════
 //  VISTA ALUMNO — Ejercicio de cálculo interactivo
 // ══════════════════════════════════════════════════════
-function renderEjercicioCalculo(p, contenedor, onCorregir, pesosCalculo){
+function renderEjercicioCalculo(p, contenedor, onCorregir, pesosCalculo, bloqueoFeedback){
   contenedor.innerHTML='';
   var datos = p.solDatos || [];
   var nPasos = (p.solPasos||[]).length;
@@ -1487,8 +1487,15 @@ function renderEjercicioCalculo(p, contenedor, onCorregir, pesosCalculo){
   // ── Botón corregir ────────────────────────────────────
   var btnCorr=document.createElement('button'); btnCorr.className='btn btn-p';
   btnCorr.style.cssText='width:100%;padding:12px;font-size:15px;margin-top:16px';
-  btnCorr.innerHTML='✓ Corregir ejercicio';
-  btnCorr.onclick=function(){ corregirCalculo(p, wrap, onCorregir, pesosCalculo); };
+  if(bloqueoFeedback){
+    btnCorr.innerHTML='🔒 Bloqueado: entrega primero la actividad';
+    btnCorr.disabled=true; btnCorr.style.opacity='0.5'; btnCorr.style.cursor='not-allowed';
+    btnCorr.dataset.bloqueoCalculo='1';
+    btnCorr._onCorregirRef=function(){ corregirCalculo(p, wrap, onCorregir, pesosCalculo); };
+  } else {
+    btnCorr.innerHTML='✓ Corregir ejercicio';
+    btnCorr.onclick=function(){ corregirCalculo(p, wrap, onCorregir, pesosCalculo); };
+  }
   wrap.appendChild(btnCorr);
 
   contenedor.appendChild(wrap);
