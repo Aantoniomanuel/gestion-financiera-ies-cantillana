@@ -14,6 +14,10 @@
 <script>
 // Safety stub for toggleGroup (called from onclick before main script loads)
 function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=document.getElementById('sub-'+id); if(!btn||!sub)return; btn.classList.toggle('open'); sub.classList.toggle('open'); }
+// Inicializar supa aquí para que esté disponible antes de que carguen los JS
+const SUPA_URL  = 'https://aqeahkwedkjwdvtpfaqm.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxZWFoa3dlZGtqd2R2dHBmYXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTU3NDIsImV4cCI6MjA5MjQ3MTc0Mn0.TU-awshpvPml6QX8jM8lw_BBXWiZM8V6olRPVaIH8Gg';
+const supa = supabase.createClient(SUPA_URL, SUPA_ANON);
 </script>
 
 
@@ -324,7 +328,7 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
 <script src="js/14-glosario-contenidos.js"></script>
 
 <!-- Calculadora financiera flotante + init -->
-<script src="js/15-init-calc.js"></script>
+<script src="js/15-init-calc.js?v=2"></script>
 
 <!-- Auth Supabase + simuladores + panel alumnos + actividades evaluables -->
 <script src="js/16-auth-sims.js"></script>
