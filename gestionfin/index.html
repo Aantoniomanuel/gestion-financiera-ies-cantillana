@@ -26,6 +26,11 @@ const supa = supabase.createClient(SUPA_URL, SUPA_ANON);
 
 <div id="flash-msg" class="flash"></div>
 
+<div id="loading-screen" style="position:fixed;inset:0;background:#1a2744;z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#c9a84c;border-radius:50%;animation:spin .7s linear infinite"></div>
+  <div style="font-family:Georgia,serif;font-size:1.2rem;color:#fff;opacity:.7">Cargando…</div>
+</div>
+
 <div id="login-screen" style="display:none;position:fixed;inset:0;background:#1a2744;z-index:9999;display:flex;align-items:center;justify-content:center">
   <div style="text-align:center;padding:2.5rem 2rem;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:420px;width:90%">
     <div style="font-size:3rem;margin-bottom:1rem">📊</div>
