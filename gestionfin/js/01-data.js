@@ -1,4 +1,3 @@
-<script>
 // ══════════════════════════════════════════════════════
 //  DATOS REALES — Gestión Financiera IES Cantillana 26-27
 //  Basados en: RD 1584/2011, Orden Junta Andalucía 11/03/2013

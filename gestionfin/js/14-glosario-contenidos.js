@@ -562,3 +562,4 @@ function moverBloque(udId, idx, dir, lista){
 
 // ── INIT ───────────────────────────────────────────────
 window.addEventListener('load', function(){
+});
