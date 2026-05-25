@@ -534,30 +534,108 @@ async function verDetalleAlumno(aid){
   }
   html+='</tbody></table></div></div>';
 
-  // Ejercicios por simulador
+  // ── Ejercicios por simulador ──────────────────────────
   var porSim={};(ej||[]).forEach(function(e){if(!porSim[e.simulador_id])porSim[e.simulador_id]=[];porSim[e.simulador_id].push(e);});
+
+  var NIV_COL={basico:'#6366f1',medio:'#f59e0b',avanzado:'#16a34a'};
+  var NIV_LBL={basico:'Básico',medio:'Medio',avanzado:'Avanzado'};
+  var NIV_STEP={basico:1,medio:2,avanzado:3};
+
+  function nivelBadge(niv){
+    var col=NIV_COL[niv]||'#9ca3af';
+    var lbl=NIV_LBL[niv]||niv;
+    var paso=NIV_STEP[niv]||0;
+    var dots=[1,2,3].map(function(i){
+      return '<span style="width:8px;height:8px;border-radius:50%;background:'+(i<=paso?col:'rgba(0,0,0,.12)')+';display:inline-block"></span>';
+    }).join('');
+    return '<div style="display:inline-flex;align-items:center;gap:6px">'
+      +'<div style="display:flex;gap:3px">'+dots+'</div>'
+      +'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:'+col+'1a;color:'+col+'">'+lbl+'</span>'
+      +'</div>';
+  }
+
+  // Tarjetas de nivel adaptativo por simulador
+  if(Object.keys(porSim).length){
+    html+='<div class="card" style="margin-bottom:1rem">'
+      +'<div class="card-header"><div class="card-title">🎯 Nivel adaptativo por simulador</div>'
+      +'<div style="font-size:12px;color:#9ca3af">Nivel actual según los últimos ejercicios completados</div></div>'
+      +'<div class="card-body">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">';
+
+    Object.keys(porSim).forEach(function(sid){
+      var lista=porSim[sid];
+      var s=sm[sid]||{nombre:'—'};
+      var nivelActual=lista[0].nivel; // más reciente (desc)
+      var col=NIV_COL[nivelActual]||'#9ca3af';
+      var paso=NIV_STEP[nivelActual]||0;
+
+      // Distribución por nivel
+      var dist={basico:0,medio:0,avanzado:0};
+      lista.forEach(function(e){ if(dist[e.nivel]!==undefined) dist[e.nivel]++; });
+      var total=lista.length;
+
+      // Últimos 3 ejercicios para tendencia
+      var ult3=lista.slice(0,3);
+      var mediaUlt3=ult3.length?Math.round(ult3.reduce(function(s,e){return s+(e.puntuacion||0);},0)/ult3.length):null;
+      var tendencia='';
+      if(mediaUlt3!==null){
+        if(mediaUlt3>=80&&paso<3) tendencia='<span style="font-size:11px;color:#16a34a">↑ Subiendo</span>';
+        else if(mediaUlt3<50&&paso>1) tendencia='<span style="font-size:11px;color:#dc2626">↓ Bajando</span>';
+        else tendencia='<span style="font-size:11px;color:#9ca3af">→ Estable</span>';
+      }
+
+      html+='<div style="border:1.5px solid '+col+'33;border-radius:12px;padding:14px;background:'+col+'08">'
+        +'<div style="font-size:12px;font-weight:700;color:#1a2744;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+s.nombre+'">'+s.nombre+'</div>'
+        +'<div style="display:flex;gap:4px;margin-bottom:8px">'
+        +[1,2,3].map(function(i){
+          return '<div style="flex:1;height:6px;border-radius:3px;background:'+(i<=paso?col:'rgba(0,0,0,.1)')+'"></div>';
+        }).join('')
+        +'</div>'
+        +'<div style="font-size:13px;font-weight:700;color:'+col+';margin-bottom:6px">'+NIV_LBL[nivelActual]+'</div>'
+        +'<div style="font-size:11px;color:#9ca3af;margin-bottom:6px">'+total+' ejercicio'+(total!==1?'s':'')+' · med. '+(lista.length?Math.round(lista.reduce(function(s,e){return s+(e.puntuacion||0);},0)/lista.length)+'%':'—')+'</div>'
+        +'<div style="display:flex;gap:4px;flex-wrap:wrap">'
+        +['basico','medio','avanzado'].filter(function(n){return dist[n]>0;}).map(function(n){
+          return '<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:'+NIV_COL[n]+'18;color:'+NIV_COL[n]+';font-weight:600">'+NIV_LBL[n]+' ×'+dist[n]+'</span>';
+        }).join('')
+        +'</div>'
+        +(tendencia?'<div style="margin-top:8px;font-size:11px">'+tendencia+'</div>':'')
+        +'</div>';
+    });
+
+    html+='</div></div></div>';
+  }
+
+  // Tabla detallada de ejercicios por simulador
   html+='<div class="card" style="margin-bottom:1rem"><div class="card-header"><div class="card-title">📊 Ejercicios por simulador</div></div>'+
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
     '<thead><tr style="background:#f9f8f5;border-bottom:2px solid #e2ddd4">'+
     '<th style="padding:10px 12px;text-align:left;font-weight:700;color:#1a2744">Simulador</th>'+
     '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Ejers.</th>'+
     '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Media</th>'+
-    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Nivel</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Nivel actual</th>'+
+    '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Distribución</th>'+
     '<th style="padding:10px 8px;text-align:center;font-weight:700;color:#1a2744">Último</th>'+
     '</tr></thead><tbody>';
 
   if(!Object.keys(porSim).length){
-    html+='<tr><td colspan="5" style="padding:1.5rem;text-align:center;color:#9ca3af">Sin ejercicios.</td></tr>';
+    html+='<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#9ca3af">Sin ejercicios.</td></tr>';
   } else {
     Object.keys(porSim).forEach(function(sid){
       var lista=porSim[sid];var s=sm[sid]||{nombre:'—'};
       var med2=Math.round(lista.reduce(function(a,e){return a+(e.puntuacion||0);},0)/lista.length);
       var mc2=med2>=70?'#16a34a':med2>=50?'#d97706':'#dc2626';
+      var dist2={basico:0,medio:0,avanzado:0};
+      lista.forEach(function(e){ if(dist2[e.nivel]!==undefined) dist2[e.nivel]++; });
+      var distHtml=['basico','medio','avanzado'].map(function(n){
+        if(!dist2[n]) return '';
+        return '<span style="font-size:10px;padding:1px 5px;border-radius:99px;background:'+NIV_COL[n]+'18;color:'+NIV_COL[n]+';font-weight:600;white-space:nowrap">'+NIV_LBL[n]+' ×'+dist2[n]+'</span>';
+      }).filter(Boolean).join(' ');
       html+='<tr style="border-bottom:1px solid #f2f0eb">'+
         '<td style="padding:8px 12px;font-weight:600">'+s.nombre+'</td>'+
         '<td style="padding:8px;text-align:center">'+lista.length+'</td>'+
         '<td style="padding:8px;text-align:center;font-weight:700;color:'+mc2+'">'+med2+'%</td>'+
-        '<td style="padding:8px;text-align:center;font-size:12px">'+lista[0].nivel+'</td>'+
+        '<td style="padding:8px;text-align:center">'+nivelBadge(lista[0].nivel)+'</td>'+
+        '<td style="padding:8px;text-align:center"><div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap">'+distHtml+'</div></td>'+
         '<td style="padding:8px;text-align:center;font-size:12px;color:#9ca3af">'+fmtF(new Date(lista[0].created_at))+'</td>'+
       '</tr>';
     });
