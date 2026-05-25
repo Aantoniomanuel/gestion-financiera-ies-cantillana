@@ -1817,8 +1817,8 @@ function renderSeccionCalificaciones(sec){
       if(!_gfActEvalNotas[n.actividad_id]) _gfActEvalNotas[n.actividad_id]={};
       _gfActEvalNotas[n.actividad_id][n.alumno_id]=parseFloat(n.nota);
     });
-    // Migración automática (solo docentes, solo si Supabase vacío y localStorage tiene datos)
-    if(USUARIO_ACTUAL && USUARIO_ACTUAL.rol==='docente' && !_gfActEval.length){
+    // Migración automática (solo docentes, solo si Supabase vacío, localStorage tiene datos y no se ha migrado antes)
+    if(USUARIO_ACTUAL && USUARIO_ACTUAL.rol==='docente' && !_gfActEval.length && !localStorage.getItem('gf_act_eval_migrated')){
       _migrarActEvalASupabase();
     }
     if(perfs.length){
