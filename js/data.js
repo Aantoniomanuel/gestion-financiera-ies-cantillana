@@ -1877,7 +1877,10 @@ function _renderCalifInner(sec){
   });
 
   if(!todasActs.length){
-    sec.innerHTML='<div class="card"><p style="color:var(--muted);font-size:14px;text-align:center;padding:2rem">No hay actividades evaluables configuradas. Crea actividades evaluables en los bloques del módulo.</p></div>';
+    var msgCard=document.createElement('div'); msgCard.className='card';
+    msgCard.innerHTML='<p style="color:var(--muted);font-size:14px;text-align:center;padding:2rem">No hay actividades evaluables configuradas. Crea actividades evaluables en los bloques del módulo.</p>';
+    sec.appendChild(msgCard);
+    _renderResumenRACE(sec, DB.alumnos);
     return;
   }
 
