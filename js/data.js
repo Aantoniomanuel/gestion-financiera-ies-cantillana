@@ -321,7 +321,8 @@ function goTo(id, btn){
     'sim-aef':         function(){loadSim('sim-aef');},
     'sim-seguros':     function(){loadSim('sim-seguros');},
     'actividades':     function(){renderActividades();},
-    'mis-actividades': function(){renderMisActividades();}
+    'mis-actividades': function(){renderMisActividades();},
+    'perfil':          function(){if(window.renderPerfil)renderPerfil();}
   };
   UNIDADES.forEach(function(u){ renders[u.id]=function(){renderUD(u);}; });
   if(renders[id]) renders[id]();

@@ -1876,3 +1876,362 @@ window.crearSelectorGrupo = crearSelectorGrupo;
 window.renderFiltroGrupoCalif = renderFiltroGrupoCalif;
 window.cargarConfigProfesor = cargarConfigProfesor;
 
+
+
+// ═══════════════════════════════════════════════════════
+// MÓDULO DE PERFILES — Profesor y Alumno
+// ═══════════════════════════════════════════════════════
+
+var GF_CURSO_KEY = 'gf_curso_actual';
+
+function getCursoActual(){
+  return localStorage.getItem(GF_CURSO_KEY) || '2026-27';
+}
+function setCursoActual(v){
+  localStorage.setItem(GF_CURSO_KEY, v);
+  var el = document.getElementById('dash-curso-txt');
+  if(el) el.textContent = 'CFGS Administración y Finanzas · IES Cantillana · Curso ' + v;
+}
+(function(){ setCursoActual(getCursoActual()); })();
+
+function renderPerfil(){
+  var root = document.getElementById('perfil-root');
+  if(!root) return;
+  root.innerHTML = '<div style="display:flex;justify-content:center;padding:3rem"><div style="color:var(--muted)">Cargando perfil...</div></div>';
+  if(!USUARIO_ACTUAL){ root.innerHTML = '<div style="padding:2rem;color:var(--muted)">No hay sesión activa.</div>'; return; }
+  if(USUARIO_ACTUAL.rol === 'docente') renderPerfilProfesor(root);
+  else renderPerfilAlumno(root);
+}
+
+// ─── PERFIL PROFESOR ──────────────────────────────────
+async function renderPerfilProfesor(root){
+  var u = USUARIO_ACTUAL;
+  var nombre = u.nombre || u.email.split('@')[0];
+  var cursoActual = getCursoActual();
+  var {data: usuarios} = await supa.from('perfiles').select('id,nombre,email,rol,created_at').order('rol').order('nombre');
+
+  var cursosOpts = ['2024-25','2025-26','2026-27','2027-28','2028-29'].map(function(y){
+    return '<option value="'+y+'"'+(y===cursoActual?' selected':'')+'>'+y+'</option>';
+  }).join('');
+
+  var avatarHtml = u.avatar_url
+    ? '<img src="'+u.avatar_url+'" style="width:100%;height:100%;object-fit:cover">'
+    : nombre.charAt(0).toUpperCase();
+
+  var usrRows = (usuarios||[]).map(function(usr){
+    var alta = usr.created_at ? new Date(usr.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
+    var badgeStyle = usr.rol==='docente'
+      ? 'background:rgba(212,175,55,.15);color:var(--gold)'
+      : 'background:rgba(99,102,241,.12);color:#6366f1';
+    var badgeLabel = usr.rol==='docente' ? 'DOCENTE' : 'ALUMNO';
+    var esSelf = usr.id === u.id;
+    var acciones = esSelf
+      ? '<span style="font-size:11px;color:var(--muted)">(tú)</span>'
+      : '<div style="display:flex;gap:6px;justify-content:flex-end">'
+        + '<button class="btn-sm" onclick="cambiarRolUsuario(\''+usr.id+'\',\''+usr.rol+'\')">⇄ Rol</button>'
+        + '<button class="btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444" onclick="eliminarDatosUsuario(\''+usr.id+'\',\''+encodeURIComponent(usr.nombre||usr.email)+'\')">🗑</button>'
+        + '</div>';
+    return '<tr>'
+      +'<td style="padding:10px 14px;font-weight:600;font-size:13px">'+(usr.nombre||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--muted)">'+(usr.email||'—')+'</td>'
+      +'<td style="text-align:center"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;'+badgeStyle+'">'+badgeLabel+'</span></td>'
+      +'<td style="font-size:12px;color:var(--muted);text-align:center">'+alta+'</td>'
+      +'<td style="padding:6px 10px;text-align:right">'+acciones+'</td>'
+      +'</tr>';
+  }).join('');
+
+  root.innerHTML =
+    '<div class="ph"><div><h1 class="pt">Mi Perfil</h1><p class="ps">Configuración y administración de la plataforma</p></div></div>'
+    +'<div style="display:grid;grid-template-columns:300px 1fr;gap:1.25rem;align-items:start">'
+
+    // ── Columna izquierda ──
+    +'<div style="display:flex;flex-direction:column;gap:1.25rem">'
+    +'<div class="card" style="text-align:center;padding:2rem">'
+    +'<div style="margin:0 auto 1rem;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--gold));display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:#fff;overflow:hidden">'+avatarHtml+'</div>'
+    +'<div style="font-size:1rem;font-weight:700;margin-bottom:4px" id="prf-nombre-display">'+nombre+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">'+u.email+'</div>'
+    +'<span style="display:inline-block;background:rgba(212,175,55,.15);color:var(--gold);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px">DOCENTE</span>'
+    +'</div>'
+    // Editar nombre
+    +'<div class="card">'
+    +'<div class="card-header"><div class="card-title">✏️ Editar nombre</div></div>'
+    +'<div class="card-body">'
+    +'<input id="prf-nombre-inp" class="fs" value="'+nombre+'" placeholder="Tu nombre" style="margin-bottom:10px">'
+    +'<button class="btn btn-p" style="width:100%" onclick="guardarNombrePerfil()">Guardar nombre</button>'
+    +'</div></div>'
+    // Año de curso
+    +'<div class="card">'
+    +'<div class="card-header"><div class="card-title">📅 Año de curso</div></div>'
+    +'<div class="card-body">'
+    +'<p style="font-size:13px;color:var(--muted);margin-bottom:12px">Selecciona el año académico que aparece en el dashboard y en los informes exportados.</p>'
+    +'<div style="display:flex;gap:10px">'
+    +'<select id="prf-curso-sel" class="fs" style="flex:1">'+cursosOpts+'</select>'
+    +'<button class="btn btn-p" onclick="guardarAnoCurso()">Aplicar</button>'
+    +'</div></div></div>'
+    +'</div>'
+
+    // ── Columna derecha ──
+    +'<div style="display:flex;flex-direction:column;gap:1.25rem">'
+    // Gestión usuarios
+    +'<div class="card">'
+    +'<div class="card-header"><div class="card-title">👥 Gestión de usuarios</div><div style="font-size:12px;color:var(--muted)">'+(usuarios||[]).length+' registrados</div></div>'
+    +'<div class="card-body" style="padding:0"><div style="overflow-x:auto">'
+    +'<table class="dt" style="width:100%"><thead><tr>'
+    +'<th style="text-align:left;padding:10px 14px">Nombre</th><th>Email</th><th>Rol</th><th>Alta</th><th></th>'
+    +'</tr></thead><tbody>'+usrRows+'</tbody></table>'
+    +'</div></div></div>'
+    // Mantenimiento
+    +'<div class="card" style="border:1px solid rgba(239,68,68,.25)">'
+    +'<div class="card-header"><div class="card-title">🛠️ Mantenimiento del curso</div></div>'
+    +'<div class="card-body" style="display:flex;flex-direction:column;gap:14px">'
+    // Backup
+    +'<div style="background:var(--surface-2,rgba(0,0,0,.03));border-radius:10px;padding:14px">'
+    +'<div style="font-weight:600;font-size:13px;margin-bottom:4px">💾 Copia de seguridad</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Descarga todos los ejercicios, entregas y notas del curso en un archivo Excel antes de pasar al siguiente año.</div>'
+    +'<button class="btn btn-p" onclick="generarBackupPlataforma()">Descargar backup Excel</button>'
+    +'</div>'
+    // Limpieza
+    +'<div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px">'
+    +'<div style="font-weight:600;font-size:13px;margin-bottom:4px;color:#ef4444">⚠️ Puesta a punto para nuevo curso</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Elimina todos los ejercicios realizados y entregas. <strong>Haz antes la copia de seguridad.</strong> Los usuarios y actividades se conservan.</div>'
+    +'<button class="btn" style="background:#ef4444;color:#fff" onclick="confirmarLimpiezaPlataforma()">Limpiar plataforma</button>'
+    +'</div>'
+    +'</div></div>'
+    +'</div></div>';
+}
+
+// ─── PERFIL ALUMNO ────────────────────────────────────
+async function renderPerfilAlumno(root){
+  var u = USUARIO_ACTUAL;
+  var nombre = u.nombre || u.email.split('@')[0];
+
+  var [resEj, resEnt] = await Promise.all([
+    supa.from('ejercicios_realizados').select('simulador_id,nivel,puntuacion,created_at,simuladores(nombre)')
+        .eq('alumno_id',u.id).eq('completado',true).order('created_at',{ascending:false}),
+    supa.from('entregas').select('id,entregada_at,puntuacion_automatica,puntuacion_docente,actividades(titulo,simuladores(nombre))')
+        .eq('alumno_id',u.id).order('entregada_at',{ascending:false})
+  ]);
+  var ejercicios = resEj.data || [];
+  var entregas   = (resEnt.data || []).filter(function(e){ return e.entregada_at; });
+
+  var totalEj = ejercicios.length;
+  var mediaGlobal = totalEj ? Math.round(ejercicios.reduce(function(s,e){return s+(e.puntuacion||0);},0)/totalEj) : 0;
+  var niveles = ['basico','medio','avanzado'];
+  var nivelMax = 'basico';
+  ejercicios.forEach(function(e){ if(niveles.indexOf(e.nivel)>niveles.indexOf(nivelMax)) nivelMax=e.nivel; });
+
+  var porSim = {};
+  ejercicios.forEach(function(e){
+    var sn = (e.simuladores&&e.simuladores.nombre)||e.simulador_id;
+    if(!porSim[sn]) porSim[sn]={total:0,suma:0,nivMax:'basico'};
+    porSim[sn].total++;
+    porSim[sn].suma+=(e.puntuacion||0);
+    if(niveles.indexOf(e.nivel)>niveles.indexOf(porSim[sn].nivMax)) porSim[sn].nivMax=e.nivel;
+  });
+
+  var nivelLabel = {basico:'Básico',medio:'Medio',avanzado:'Avanzado'};
+  var nivelColor = {basico:'#6366f1',medio:'#f59e0b',avanzado:'#16a34a'};
+
+  var avatarHtml = u.avatar_url
+    ? '<img src="'+u.avatar_url+'" style="width:100%;height:100%;object-fit:cover">'
+    : nombre.charAt(0).toUpperCase();
+
+  var simRows = Object.keys(porSim).length === 0
+    ? '<div style="padding:2rem;text-align:center;color:var(--muted);font-size:13px">Aún no has completado ejercicios en los simuladores.</div>'
+    : '<table class="dt" style="width:100%"><thead><tr>'
+      +'<th style="text-align:left;padding:10px 14px">Simulador</th><th>Ejercicios</th><th>Media</th><th>Nivel máx.</th>'
+      +'</tr></thead><tbody>'
+      + Object.keys(porSim).map(function(sn){
+          var s = porSim[sn];
+          var media = Math.round(s.suma/s.total);
+          var col = nivelColor[s.nivMax]||'#6366f1';
+          return '<tr>'
+            +'<td style="padding:10px 14px;font-weight:600;font-size:13px">'+sn+'</td>'
+            +'<td style="text-align:center">'+s.total+'</td>'
+            +'<td style="text-align:center">'
+              +'<div style="display:flex;align-items:center;gap:8px;justify-content:center">'
+              +'<div style="flex:1;max-width:80px;height:6px;background:rgba(0,0,0,.08);border-radius:3px">'
+              +'<div style="height:100%;width:'+Math.min(100,media)+'%;background:'+col+';border-radius:3px"></div></div>'
+              +'<span style="font-size:12px;font-weight:600">'+media+'%</span></div></td>'
+            +'<td style="text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px;background:'+col+'22;color:'+col+'">'+nivelLabel[s.nivMax]+'</span></td>'
+            +'</tr>';
+        }).join('')
+      +'</tbody></table>';
+
+  var entRows = entregas.length === 0
+    ? '<div style="padding:2rem;text-align:center;color:var(--muted);font-size:13px">Aún no has entregado ninguna actividad.</div>'
+    : '<table class="dt" style="width:100%"><thead><tr>'
+      +'<th style="text-align:left;padding:10px 14px">Actividad</th><th>Simulador</th><th>Entregada</th><th>Nota auto.</th><th>Nota docente</th>'
+      +'</tr></thead><tbody>'
+      + entregas.map(function(e){
+          var tit = (e.actividades&&e.actividades.titulo)||'Actividad';
+          var sim = (e.actividades&&e.actividades.simuladores&&e.actividades.simuladores.nombre)||'—';
+          var fecha = e.entregada_at ? new Date(e.entregada_at).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
+          var nota  = e.puntuacion_automatica!=null ? Math.round(e.puntuacion_automatica)+'%' : '—';
+          var notaD = e.puntuacion_docente!=null ? e.puntuacion_docente : '—';
+          return '<tr>'
+            +'<td style="padding:10px 14px;font-weight:600;font-size:13px">'+tit+'</td>'
+            +'<td style="font-size:12px;color:var(--muted)">'+sim+'</td>'
+            +'<td style="font-size:12px;text-align:center">'+fecha+'</td>'
+            +'<td style="text-align:center;font-weight:600">'+nota+'</td>'
+            +'<td style="text-align:center;font-weight:600;color:var(--gold)">'+notaD+'</td>'
+            +'</tr>';
+        }).join('')
+      +'</tbody></table>';
+
+  root.innerHTML =
+    '<div class="ph"><div><h1 class="pt">Mi Perfil</h1><p class="ps">Tu información y progreso en Gestión Financiera</p></div></div>'
+    +'<div style="display:grid;grid-template-columns:290px 1fr;gap:1.25rem;align-items:start">'
+
+    // ── Columna izquierda ──
+    +'<div style="display:flex;flex-direction:column;gap:1.25rem">'
+    // Avatar
+    +'<div class="card" style="text-align:center;padding:2rem">'
+    +'<div style="position:relative;width:90px;height:90px;margin:0 auto 1rem">'
+    +'<div id="prf-alu-avatar" style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;color:#fff;overflow:hidden">'+avatarHtml+'</div>'
+    +'<button onclick="document.getElementById(\'prf-foto-inp\').click()" title="Cambiar foto" style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;font-size:14px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.25)">📷</button>'
+    +'</div>'
+    +'<input type="file" id="prf-foto-inp" accept="image/*" style="display:none" onchange="subirFotoAlumno(this)">'
+    +'<div style="font-size:1rem;font-weight:700;margin-bottom:4px" id="prf-alu-nombre">'+nombre+'</div>'
+    +'<div style="font-size:12px;color:var(--muted)">'+u.email+'</div>'
+    +'</div>'
+    // Editar nombre
+    +'<div class="card">'
+    +'<div class="card-header"><div class="card-title">✏️ Nombre de usuario</div></div>'
+    +'<div class="card-body">'
+    +'<input id="prf-nombre-inp" class="fs" value="'+nombre+'" placeholder="Tu nombre" style="margin-bottom:10px">'
+    +'<button class="btn btn-p" style="width:100%" onclick="guardarNombrePerfil()">Guardar</button>'
+    +'</div></div>'
+    // Stats
+    +'<div class="card">'
+    +'<div class="card-header"><div class="card-title">📊 Resumen</div></div>'
+    +'<div class="card-body" style="display:flex;flex-direction:column;gap:0">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-lt,rgba(0,0,0,.06))"><span style="font-size:13px;color:var(--muted)">Ejercicios completados</span><span style="font-size:16px;font-weight:700">'+totalEj+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-lt,rgba(0,0,0,.06))"><span style="font-size:13px;color:var(--muted)">Actividades entregadas</span><span style="font-size:16px;font-weight:700">'+entregas.length+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-lt,rgba(0,0,0,.06))"><span style="font-size:13px;color:var(--muted)">Puntuación media</span><span style="font-size:16px;font-weight:700">'+mediaGlobal+'%</span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0"><span style="font-size:13px;color:var(--muted)">Nivel alcanzado</span>'
+    +'<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:'+nivelColor[nivelMax]+'22;color:'+nivelColor[nivelMax]+'">'+nivelLabel[nivelMax]+'</span></div>'
+    +'</div></div>'
+    +'</div>'
+
+    // ── Columna derecha ──
+    +'<div style="display:flex;flex-direction:column;gap:1.25rem">'
+    +'<div class="card"><div class="card-header"><div class="card-title">🧮 Progreso en simuladores</div></div><div class="card-body" style="padding:0">'+simRows+'</div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">📋 Actividades entregadas</div><div style="font-size:12px;color:var(--muted)">'+entregas.length+' entregas</div></div><div class="card-body" style="padding:0">'+entRows+'</div></div>'
+    +'</div></div>';
+}
+
+// ─── Funciones comunes ────────────────────────────────
+async function guardarNombrePerfil(){
+  var inp = document.getElementById('prf-nombre-inp');
+  if(!inp) return;
+  var nuevo = inp.value.trim();
+  if(!nuevo){ flash('Introduce un nombre válido','#ef4444'); return; }
+  var {error} = await supa.from('perfiles').update({nombre:nuevo}).eq('id',USUARIO_ACTUAL.id);
+  if(error){ flash('Error al guardar: '+error.message,'#ef4444'); return; }
+  USUARIO_ACTUAL.nombre = nuevo;
+  var nd = document.getElementById('prf-nombre-display')||document.getElementById('prf-alu-nombre');
+  if(nd) nd.textContent = nuevo;
+  var un = document.getElementById('u-name');
+  if(un) un.textContent = nuevo;
+  flash('✅ Nombre actualizado','#16a34a');
+}
+
+function guardarAnoCurso(){
+  var sel = document.getElementById('prf-curso-sel');
+  if(!sel) return;
+  setCursoActual(sel.value);
+  flash('✅ Curso ' + sel.value + ' activado','#16a34a');
+}
+
+async function cambiarRolUsuario(uid, rolActual){
+  var nuevoRol = rolActual === 'docente' ? 'alumno' : 'docente';
+  if(!confirm('¿Cambiar el rol de este usuario a ' + nuevoRol.toUpperCase() + '?')) return;
+  var {error} = await supa.from('perfiles').update({rol:nuevoRol}).eq('id',uid);
+  if(error){ flash('Error: '+error.message,'#ef4444'); return; }
+  flash('✅ Rol cambiado a ' + nuevoRol,'#16a34a');
+  setTimeout(function(){ renderPerfil(); }, 700);
+}
+
+async function eliminarDatosUsuario(uid, nombreEnc){
+  var nombre = decodeURIComponent(nombreEnc);
+  if(!confirm('⚠️ ¿Eliminar TODOS los datos de ' + nombre + '?\n\nSe borrarán sus ejercicios y entregas. El usuario podrá volver a entrar desde cero.\n\nEsta acción no se puede deshacer.')) return;
+  await Promise.all([
+    supa.from('ejercicios_realizados').delete().eq('alumno_id',uid),
+    supa.from('entregas').delete().eq('alumno_id',uid)
+  ]);
+  flash('✅ Datos de ' + nombre + ' eliminados','#16a34a');
+  setTimeout(function(){ renderPerfil(); }, 800);
+}
+
+async function generarBackupPlataforma(){
+  if(!window.XLSX){ flash('Librería Excel no disponible','#ef4444'); return; }
+  flash('Generando backup...','#6366f1');
+  try{
+    var [rP,rE,rEnt,rA,rAc] = await Promise.all([
+      supa.from('perfiles').select('*').eq('rol','alumno').order('nombre'),
+      supa.from('ejercicios_realizados').select('*').order('created_at',{ascending:false}),
+      supa.from('entregas').select('*').order('entregada_at',{ascending:false}),
+      supa.from('actividades').select('*').order('created_at'),
+      supa.from('accesos').select('*').order('created_at',{ascending:false}).limit(2000)
+    ]);
+    var wb = XLSX.utils.book_new();
+    function addSheet(data, name){
+      var ws = data&&data.length ? XLSX.utils.json_to_sheet(data) : XLSX.utils.aoa_to_sheet([['Sin datos']]);
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    }
+    addSheet(rP.data,   'Alumnos');
+    addSheet(rE.data,   'Ejercicios');
+    addSheet(rEnt.data, 'Entregas');
+    addSheet(rA.data,   'Actividades');
+    addSheet(rAc.data,  'Accesos');
+    XLSX.writeFile(wb, 'GestionFin_Backup_' + getCursoActual().replace('-','_') + '.xlsx');
+    flash('✅ Backup descargado','#16a34a');
+  }catch(e){ flash('Error: '+e.message,'#ef4444'); }
+}
+
+async function confirmarLimpiezaPlataforma(){
+  if(!confirm('⚠️ LIMPIEZA DE PLATAFORMA\n\n¿Borrar TODO el progreso de los alumnos?\n\n• Ejercicios realizados → eliminados\n• Entregas → eliminadas\n• Usuarios y actividades → conservados\n\nHaz primero la copia de seguridad.\n\nPulsa OK para continuar.')) return;
+  var curso = getCursoActual();
+  var txt = prompt('Para confirmar, escribe el año de curso actual (' + curso + '):');
+  if(txt !== curso){ flash('Limpieza cancelada','#ef4444'); return; }
+  flash('Limpiando plataforma...','#6366f1');
+  try{
+    await Promise.all([
+      supa.from('ejercicios_realizados').delete().neq('id','00000000-0000-0000-0000-000000000000'),
+      supa.from('entregas').delete().neq('id','00000000-0000-0000-0000-000000000000')
+    ]);
+    flash('✅ Plataforma limpiada. Lista para el curso ' + curso,'#16a34a');
+  }catch(e){ flash('Error: '+e.message,'#ef4444'); }
+}
+
+async function subirFotoAlumno(input){
+  var file = input.files[0]; input.value='';
+  if(!file) return;
+  if(file.size > 2*1024*1024){ flash('La foto no puede superar 2 MB','#ef4444'); return; }
+  flash('Subiendo foto...','#6366f1');
+  try{
+    var ext = file.name.split('.').pop();
+    var path = USUARIO_ACTUAL.id + '/avatar.' + ext;
+    var {error:upErr} = await supa.storage.from('avatares').upload(path, file, {upsert:true, contentType:file.type});
+    if(upErr) throw upErr;
+    var {data:urlData} = supa.storage.from('avatares').getPublicUrl(path);
+    var pub = urlData.publicUrl;
+    await supa.from('perfiles').update({avatar_url:pub}).eq('id',USUARIO_ACTUAL.id);
+    USUARIO_ACTUAL.avatar_url = pub;
+    var av = document.getElementById('prf-alu-avatar');
+    if(av) av.innerHTML = '<img src="'+pub+'" style="width:100%;height:100%;object-fit:cover">';
+    var sa = document.getElementById('u-avatar');
+    if(sa) sa.innerHTML = '<img src="'+pub+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
+    flash('✅ Foto actualizada','#16a34a');
+  }catch(e){ flash('Error al subir: '+(e.message||e),'#ef4444'); }
+}
+
+window.renderPerfil                  = renderPerfil;
+window.guardarNombrePerfil           = guardarNombrePerfil;
+window.guardarAnoCurso               = guardarAnoCurso;
+window.cambiarRolUsuario             = cambiarRolUsuario;
+window.eliminarDatosUsuario          = eliminarDatosUsuario;
+window.generarBackupPlataforma       = generarBackupPlataforma;
+window.confirmarLimpiezaPlataforma   = confirmarLimpiezaPlataforma;
+window.subirFotoAlumno               = subirFotoAlumno;

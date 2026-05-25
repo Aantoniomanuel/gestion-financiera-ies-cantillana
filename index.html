@@ -128,10 +128,11 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
     </div><!-- end sidebar-nav -->
     <button class="nav-item" id="nav-nuevo-bloque" onclick="abrirModalNuevoBloque()" style="color:var(--gold-light);border-top:1px solid rgba(255,255,255,.07);margin-top:4px">➕ Nuevo bloque</button>
     <div class="s-footer">
-      <div class="s-user">
+      <div class="s-user" id="s-user-btn" onclick="goTo('perfil',document.getElementById('nav-perfil-hidden'))" style="cursor:pointer" title="Ver mi perfil">
         <div class="avatar" id="u-avatar">P</div>
         <div><div class="u-name" id="u-name">Profesor</div><div class="u-role" id="u-role">Gestión Financiera</div></div>
       </div>
+      <button id="nav-perfil-hidden" style="display:none"></button>
       <div class="rol-btns">
         <button class="rol-btn active" id="rb-prof" onclick="setRol('profesor')">Profesor</button>
         <button class="rol-btn" id="rb-alu" onclick="setRol('alumno')">Alumno</button>
@@ -143,7 +144,7 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
   <main class="main">
     <!-- Dashboard -->
     <div class="page active" id="page-dashboard">
-      <div class="ph"><div><div id="dash-saludo" style="font-size:13px;color:var(--muted);font-weight:400;margin-bottom:4px"></div><h1 class="pt">Gestión Financiera</h1><p class="ps">CFGS Administración y Finanzas · IES Cantillana · Curso 2026-27</p></div></div>
+      <div class="ph"><div><div id="dash-saludo" style="font-size:13px;color:var(--muted);font-weight:400;margin-bottom:4px"></div><h1 class="pt">Gestión Financiera</h1><p class="ps" id="dash-curso-txt">CFGS Administración y Finanzas · IES Cantillana · Curso 2026-27</p></div></div>
       <div class="grid-s" id="dash-stats">
         <div class="sc"><div class="sn" id="dash-bloques">5</div><div class="sl">Bloques del módulo</div></div>
         <div class="sc"><div class="sn" id="dash-act">0</div><div class="sl">Actividades creadas</div></div>
@@ -229,6 +230,9 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
     </div>
     <div class="page" id="page-banco"><div id="banco-root"></div></div>
     <div class="page" id="page-test"><div id="test-root"></div></div>
+
+    <!-- Perfil -->
+    <div class="page" id="page-perfil"><div id="perfil-root"></div></div>
   </main>
 
 <div class="modal-ov" id="modal">
