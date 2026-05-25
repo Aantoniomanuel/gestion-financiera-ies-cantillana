@@ -2170,14 +2170,18 @@ async function renderPerfilAlumno(root){
     +'<button onclick="document.getElementById(\'prf-foto-inp\').click()" title="Cambiar foto" style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;font-size:14px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.25)">📷</button>'
     +'</div>'
     +'<input type="file" id="prf-foto-inp" accept="image/*" style="display:none" onchange="subirFotoAlumno(this)">'
-    +'<div style="font-size:1rem;font-weight:700;margin-bottom:4px" id="prf-alu-nombre">'+nombre+'</div>'
+    +'<div style="font-size:1rem;font-weight:700;margin-bottom:2px" id="prf-alu-nombre">'+nombre+'</div>'
+    +((u.apellidos)?'<div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px">'+u.apellidos+'</div>':'')
     +'<div style="font-size:12px;color:var(--muted)">'+u.email+'</div>'
     +'</div>'
-    // Editar nombre
+    // Editar nombre y apellidos
     +'<div class="card">'
-    +'<div class="card-header"><div class="card-title">✏️ Nombre de usuario</div></div>'
+    +'<div class="card-header"><div class="card-title">✏️ Datos personales</div></div>'
     +'<div class="card-body">'
+    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Nombre</label>'
     +'<input id="prf-nombre-inp" class="fs" value="'+nombre+'" placeholder="Tu nombre" style="margin-bottom:10px">'
+    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Apellidos</label>'
+    +'<input id="prf-apellidos-inp" class="fs" value="'+(u.apellidos||'')+'" placeholder="Tus apellidos" style="margin-bottom:10px">'
     +'<button class="btn btn-p" style="width:100%" onclick="guardarNombrePerfil()">Guardar</button>'
     +'</div></div>'
     // Stats
@@ -2202,17 +2206,22 @@ async function renderPerfilAlumno(root){
 // ─── Funciones comunes ────────────────────────────────
 async function guardarNombrePerfil(){
   var inp = document.getElementById('prf-nombre-inp');
+  var inpAp = document.getElementById('prf-apellidos-inp');
   if(!inp) return;
   var nuevo = inp.value.trim();
+  var nuevosAp = inpAp ? inpAp.value.trim() : null;
   if(!nuevo){ flash('Introduce un nombre válido','#ef4444'); return; }
-  var {error} = await supa.from('perfiles').update({nombre:nuevo}).eq('id',USUARIO_ACTUAL.id);
+  var update = {nombre:nuevo};
+  if(nuevosAp !== null) update.apellidos = nuevosAp;
+  var {error} = await supa.from('perfiles').update(update).eq('id',USUARIO_ACTUAL.id);
   if(error){ flash('Error al guardar: '+error.message,'#ef4444'); return; }
   USUARIO_ACTUAL.nombre = nuevo;
+  if(nuevosAp !== null) USUARIO_ACTUAL.apellidos = nuevosAp;
   var nd = document.getElementById('prf-nombre-display')||document.getElementById('prf-alu-nombre');
   if(nd) nd.textContent = nuevo;
   var un = document.getElementById('u-name');
   if(un) un.textContent = nuevo;
-  flash('✅ Nombre actualizado','#16a34a');
+  flash('✅ Datos actualizados','#16a34a');
 }
 
 function guardarAnoCurso(){

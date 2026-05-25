@@ -1799,7 +1799,7 @@ function renderSeccionCalificaciones(sec){
     'Cargando alumnos…</div>';
 
   Promise.all([
-    supa.from('perfiles').select('id,nombre,email,avatar_url,grupo').eq('rol','alumno').order('nombre'),
+    supa.from('perfiles').select('id,nombre,apellidos,email,avatar_url,grupo').eq('rol','alumno').order('nombre'),
     supa.from('actividades').select('id,titulo,ce_vinculados').eq('activa',true),
     supa.from('entregas').select('alumno_id,actividad_id,puntuacion_docente,puntuacion_automatica'),
     supa.from('act_eval').select('*').order('unidad_id').order('orden'),
@@ -1829,7 +1829,7 @@ function renderSeccionCalificaciones(sec){
         return {
           id: p.id,
           nombre: p.nombre || local.nombre || '',
-          apellidos: '',
+          apellidos: p.apellidos || local.apellidos || '',
           email: p.email || local.email || '',
           avatar_url: p.avatar_url || '',
           grupo: p.grupo || local.grupo || ''
