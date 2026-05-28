@@ -2123,6 +2123,14 @@ async function renderPerfilProfesor(root){
     +'<input id="prf-nombre-inp" class="fs" value="'+nombre+'" placeholder="Tu nombre" style="margin-bottom:10px">'
     +'<button class="btn btn-p" style="width:100%" onclick="guardarNombrePerfil()">Guardar nombre</button>'
     +'</div></div>'
+    // Cambiar contraseña
+    +'<div class="card">'
+    +'<div class="card-header"><div class="card-title">🔑 Cambiar contraseña</div></div>'
+    +'<div class="card-body">'
+    +'<input id="prf-pass1" type="password" class="fs" placeholder="Nueva contraseña (mín. 8 car.)" style="margin-bottom:8px">'
+    +'<input id="prf-pass2" type="password" class="fs" placeholder="Repetir contraseña" style="margin-bottom:10px">'
+    +'<button class="btn btn-g" style="width:100%" onclick="cambiarPasswordPerfil()">Cambiar contraseña</button>'
+    +'</div></div>'
     // Año de curso
     +'<div class="card">'
     +'<div class="card-header"><div class="card-title">📅 Año de curso</div></div>'
@@ -2273,6 +2281,14 @@ async function renderPerfilAlumno(root){
     +'<input id="prf-apellidos-inp" class="fs" value="'+(u.apellidos||'')+'" placeholder="Tus apellidos" style="margin-bottom:10px">'
     +'<button class="btn btn-p" style="width:100%" onclick="guardarNombrePerfil()">Guardar</button>'
     +'</div></div>'
+    // Cambiar contraseña
+    +'<div class="card">'
+    +'<div class="card-header"><div class="card-title">🔑 Cambiar contraseña</div></div>'
+    +'<div class="card-body">'
+    +'<input id="prf-pass1" type="password" class="fs" placeholder="Nueva contraseña (mín. 8 car.)" style="margin-bottom:8px">'
+    +'<input id="prf-pass2" type="password" class="fs" placeholder="Repetir contraseña" style="margin-bottom:10px">'
+    +'<button class="btn btn-g" style="width:100%" onclick="cambiarPasswordPerfil()">Cambiar contraseña</button>'
+    +'</div></div>'
     // Stats
     +'<div class="card">'
     +'<div class="card-header"><div class="card-title">📊 Resumen</div></div>'
@@ -2313,6 +2329,24 @@ async function guardarNombrePerfil(){
   flash('✅ Datos actualizados','#16a34a');
 }
 
+async function cambiarPasswordPerfil(){
+  var p1 = (document.getElementById('prf-pass1')||{}).value;
+  var p2 = (document.getElementById('prf-pass2')||{}).value;
+  if(!p1){ flash('Introduce la nueva contraseña','#ef4444'); return; }
+  if(p1.length < 8){ flash('La contraseña debe tener al menos 8 caracteres','#ef4444'); return; }
+  if(p1 !== p2){ flash('Las contraseñas no coinciden','#ef4444'); return; }
+  var {error} = await supa.auth.updateUser({password: p1});
+  if(error){
+    flash(error.message.includes('same password')
+      ? 'La nueva contraseña no puede ser igual a la actual'
+      : 'Error: '+error.message, '#ef4444');
+    return;
+  }
+  var i1=document.getElementById('prf-pass1'), i2=document.getElementById('prf-pass2');
+  if(i1) i1.value=''; if(i2) i2.value='';
+  flash('✅ Contraseña actualizada','#16a34a');
+}
+
 function guardarAnoCurso(){
   var sel = document.getElementById('prf-curso-sel');
   if(!sel) return;
@@ -2338,17 +2372,30 @@ function adminEditarPerfil(uid, nombreEnc, apellidosEnc, grupoEnc, rolActual){
     return '<option value="'+r+'"'+(r===rolActual?' selected':'')+'>'+r.charAt(0).toUpperCase()+r.slice(1)+'</option>';
   }).join('');
 
+  var lbl = 'style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px"';
   overlay.innerHTML=
-    '<div style="background:#fff;border-radius:14px;padding:1.5rem;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)">'
+    '<div style="background:#fff;border-radius:14px;padding:1.5rem;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto">'
     +'<div style="font-weight:700;font-size:1rem;color:var(--navy);margin-bottom:1.2rem">✏️ Editar perfil de usuario</div>'
-    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Nombre</label>'
+    +'<label '+lbl+'>Nombre</label>'
     +'<input id="adm-nombre" class="fs" value="'+nombre+'" style="margin-bottom:10px">'
-    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Apellidos</label>'
+    +'<label '+lbl+'>Apellidos</label>'
     +'<input id="adm-apellidos" class="fs" value="'+apellidos+'" style="margin-bottom:10px">'
-    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Grupo</label>'
+    +'<label '+lbl+'>Grupo</label>'
     +'<select id="adm-grupo" class="fs" style="margin-bottom:10px">'+grupoOpts+'</select>'
-    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Rol</label>'
-    +'<select id="adm-rol" class="fs" style="margin-bottom:1.4rem">'+rolOpts+'</select>'
+    +'<label '+lbl+'>Rol</label>'
+    +'<select id="adm-rol" class="fs" style="margin-bottom:1.2rem">'+rolOpts+'</select>'
+    // Sección contraseña
+    +'<div style="border-top:1px solid #e5e7eb;padding-top:1rem;margin-bottom:1.2rem">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">🔑 Contraseña</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Envía un enlace de restablecimiento al correo del alumno, o establece una nueva contraseña directamente.</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+    +'<button id="adm-send-reset" class="btn btn-g" style="font-size:12px">📧 Enviar enlace de reset</button>'
+    +'</div>'
+    +'<label '+lbl+'>Nueva contraseña (dejar vacío para no cambiar)</label>'
+    +'<input id="adm-newpass" type="password" class="fs" placeholder="Mín. 8 caracteres" style="margin-bottom:6px">'
+    +'<input id="adm-newpass2" type="password" class="fs" placeholder="Repetir contraseña" style="margin-bottom:0">'
+    +'<div id="adm-pass-msg" style="font-size:12px;margin-top:6px;display:none"></div>'
+    +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end">'
     +'<button id="adm-cancel" class="btn btn-g">Cancelar</button>'
     +'<button id="adm-save" class="btn btn-p">Guardar cambios</button>'
@@ -2358,18 +2405,58 @@ function adminEditarPerfil(uid, nombreEnc, apellidosEnc, grupoEnc, rolActual){
   overlay.querySelector('#adm-cancel').onclick = function(){ document.body.removeChild(overlay); };
   overlay.onclick = function(e){ if(e.target===overlay) document.body.removeChild(overlay); };
 
+  // Enviar enlace de reset de contraseña
+  overlay.querySelector('#adm-send-reset').onclick = async function(){
+    var btn = this; btn.disabled=true; btn.textContent='Enviando…';
+    // Obtener email del usuario
+    var {data:perf} = await supa.from('perfiles').select('email').eq('id',uid).single();
+    if(!perf||!perf.email){ flash('No se encontró el email del usuario','#ef4444'); btn.disabled=false; btn.textContent='📧 Enviar enlace de reset'; return; }
+    var {error} = await supa.auth.resetPasswordForEmail(perf.email, {redirectTo: window.location.href});
+    if(error){ flash('Error: '+error.message,'#ef4444'); }
+    else { flash('✅ Enlace enviado a '+perf.email,'#16a34a'); }
+    btn.disabled=false; btn.textContent='📧 Enviar enlace de reset';
+  };
+
   overlay.querySelector('#adm-save').onclick = async function(){
     var btn = this; btn.disabled=true; btn.textContent='Guardando…';
     var nuevoNombre   = overlay.querySelector('#adm-nombre').value.trim();
     var nuevoApellidos= overlay.querySelector('#adm-apellidos').value.trim();
     var nuevoGrupo    = overlay.querySelector('#adm-grupo').value;
     var nuevoRol      = overlay.querySelector('#adm-rol').value;
+    var newPass       = overlay.querySelector('#adm-newpass').value;
+    var newPass2      = overlay.querySelector('#adm-newpass2').value;
+    var passMsg       = overlay.querySelector('#adm-pass-msg');
+
     if(!nuevoNombre){ flash('El nombre no puede estar vacío','#ef4444'); btn.disabled=false; btn.textContent='Guardar cambios'; return; }
+
+    // Validar contraseña si se rellenó
+    if(newPass){
+      if(newPass.length < 8){
+        passMsg.style.display='block'; passMsg.style.color='#ef4444'; passMsg.textContent='La contraseña debe tener al menos 8 caracteres';
+        btn.disabled=false; btn.textContent='Guardar cambios'; return;
+      }
+      if(newPass !== newPass2){
+        passMsg.style.display='block'; passMsg.style.color='#ef4444'; passMsg.textContent='Las contraseñas no coinciden';
+        btn.disabled=false; btn.textContent='Guardar cambios'; return;
+      }
+    }
+
+    // Guardar datos del perfil
     var {error} = await supa.from('perfiles').update({
       nombre:nuevoNombre, apellidos:nuevoApellidos,
       grupo:nuevoGrupo||null, rol:nuevoRol
     }).eq('id', uid);
     if(error){ flash('Error: '+error.message,'#ef4444'); btn.disabled=false; btn.textContent='Guardar cambios'; return; }
+
+    // Cambiar contraseña si se indicó (solo funciona si el usuario tiene sesión activa;
+    // para otros usuarios se recomienda el enlace de reset)
+    if(newPass){
+      passMsg.style.display='block'; passMsg.style.color='#6366f1';
+      passMsg.textContent='⚠️ El cambio de contraseña directo requiere que el usuario use el enlace de reset. Se ha enviado automáticamente.';
+      var {data:perf} = await supa.from('perfiles').select('email').eq('id',uid).single();
+      if(perf&&perf.email) await supa.auth.resetPasswordForEmail(perf.email, {redirectTo: window.location.href});
+    }
+
     document.body.removeChild(overlay);
     flash('✅ Perfil actualizado','#16a34a');
     setTimeout(function(){ renderPerfil(); }, 500);
@@ -2538,6 +2625,7 @@ async function subirFotoAlumno(input){
   }catch(e){ flash('Error al subir: '+(e.message||e),'#ef4444'); }
 }
 
+window.cambiarPasswordPerfil         = cambiarPasswordPerfil;
 window.loginShowTab                  = loginShowTab;
 window.loginConEmail                 = loginConEmail;
 window.registrarConEmail             = registrarConEmail;
