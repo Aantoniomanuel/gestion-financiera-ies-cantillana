@@ -41,13 +41,58 @@ function toggleGroup(id){ var btn=document.getElementById('grp-'+id),sub=documen
   <div style="text-align:center;padding:2.5rem 2rem;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:420px;width:90%">
     <div style="font-size:3rem;margin-bottom:1rem">📊</div>
     <div style="font-family:Georgia,serif;font-size:1.6rem;font-weight:700;color:#1a2744;margin-bottom:.4rem">Gestión Financiera</div>
-    <div style="font-size:13px;color:#9ca3af;margin-bottom:2rem">IES Cantillana · CFGS Administración y Finanzas</div>
-    <button id="btn-google-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 20px;border:1.5px solid #e2ddd4;border-radius:12px;background:#fff;cursor:pointer;font-size:15px;font-weight:600;color:#1a2744">
+    <div style="font-size:13px;color:#9ca3af;margin-bottom:1.5rem">IES Cantillana · CFGS Administración y Finanzas</div>
+
+    <!-- Google -->
+    <button id="btn-google-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px 20px;border:1.5px solid #e2ddd4;border-radius:12px;background:#fff;cursor:pointer;font-size:15px;font-weight:600;color:#1a2744">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20">
       Entrar con Google
     </button>
+
+    <!-- Separador -->
+    <div style="display:flex;align-items:center;gap:10px;margin:1.2rem 0">
+      <div style="flex:1;height:1px;background:#e5e7eb"></div>
+      <span style="font-size:12px;color:#9ca3af">o con correo del centro</span>
+      <div style="flex:1;height:1px;background:#e5e7eb"></div>
+    </div>
+
+    <!-- Tabs login / registro -->
+    <div style="display:flex;background:#f3f4f6;border-radius:10px;padding:3px;margin-bottom:1.2rem">
+      <button id="tab-login" onclick="loginShowTab('login')" style="flex:1;padding:7px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#1a2744;box-shadow:0 1px 3px rgba(0,0,0,.1)">Entrar</button>
+      <button id="tab-registro" onclick="loginShowTab('registro')" style="flex:1;padding:7px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#9ca3af">Registrarse</button>
+    </div>
+
+    <!-- Formulario LOGIN -->
+    <div id="form-login">
+      <input id="login-email" type="email" placeholder="correo@g.educaand.es" autocomplete="email"
+        style="width:100%;padding:11px 14px;border:1.5px solid #e2ddd4;border-radius:10px;font-size:14px;margin-bottom:10px;box-sizing:border-box;outline:none">
+      <input id="login-password" type="password" placeholder="Contraseña" autocomplete="current-password"
+        style="width:100%;padding:11px 14px;border:1.5px solid #e2ddd4;border-radius:10px;font-size:14px;margin-bottom:12px;box-sizing:border-box;outline:none">
+      <button onclick="loginConEmail()" style="width:100%;padding:13px;border:none;border-radius:12px;background:#1a2744;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Entrar</button>
+    </div>
+
+    <!-- Formulario REGISTRO -->
+    <div id="form-registro" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="reg-nombre" type="text" placeholder="Nombre" autocomplete="given-name"
+          style="flex:1;padding:11px 14px;border:1.5px solid #e2ddd4;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none">
+        <input id="reg-apellidos" type="text" placeholder="Apellidos" autocomplete="family-name"
+          style="flex:1;padding:11px 14px;border:1.5px solid #e2ddd4;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none">
+      </div>
+      <input id="reg-email" type="email" placeholder="correo@g.educaand.es" autocomplete="email"
+        style="width:100%;padding:11px 14px;border:1.5px solid #e2ddd4;border-radius:10px;font-size:14px;margin-bottom:10px;box-sizing:border-box;outline:none">
+      <input id="reg-password" type="password" placeholder="Contraseña (mín. 8 caracteres)" autocomplete="new-password"
+        style="width:100%;padding:11px 14px;border:1.5px solid #e2ddd4;border-radius:10px;font-size:14px;margin-bottom:10px;box-sizing:border-box;outline:none">
+      <input id="reg-password2" type="password" placeholder="Repetir contraseña" autocomplete="new-password"
+        style="width:100%;padding:11px 14px;border:1.5px solid #e2ddd4;border-radius:10px;font-size:14px;margin-bottom:12px;box-sizing:border-box;outline:none">
+      <button onclick="registrarConEmail()" style="width:100%;padding:13px;border:none;border-radius:12px;background:#c9a84c;color:#1a2744;font-size:15px;font-weight:700;cursor:pointer">Crear cuenta</button>
+    </div>
+
+    <!-- Mensaje confirmación / error -->
     <div id="login-error" style="margin-top:12px;font-size:12px;color:#dc2626;display:none"></div>
-    <div style="margin-top:1.5rem;font-size:11px;color:#9ca3af">Accede con tu cuenta <strong>@g.educaand.es</strong></div>
+    <div id="login-ok" style="margin-top:12px;font-size:12px;color:#16a34a;display:none"></div>
+
+    <div style="margin-top:1.2rem;font-size:11px;color:#9ca3af">Solo cuentas <strong>@g.educaand.es</strong></div>
   </div>
 </div>
 

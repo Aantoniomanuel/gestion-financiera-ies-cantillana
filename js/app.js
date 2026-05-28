@@ -95,6 +95,85 @@ async function loginConGoogle(){
   }
 }
 
+// ─── Login / Registro por email ──────────────────────────
+var _DOMINIO_CENTRO = '@g.educaand.es';
+
+function loginShowTab(tab){
+  var isLogin = tab === 'login';
+  document.getElementById('form-login').style.display    = isLogin ? '' : 'none';
+  document.getElementById('form-registro').style.display = isLogin ? 'none' : '';
+  var tL = document.getElementById('tab-login');
+  var tR = document.getElementById('tab-registro');
+  tL.style.background   = isLogin ? '#fff' : 'transparent';
+  tL.style.color        = isLogin ? '#1a2744' : '#9ca3af';
+  tL.style.boxShadow    = isLogin ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
+  tR.style.background   = !isLogin ? '#fff' : 'transparent';
+  tR.style.color        = !isLogin ? '#1a2744' : '#9ca3af';
+  tR.style.boxShadow    = !isLogin ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
+  // Limpiar mensajes
+  ['login-error','login-ok'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){ el.style.display='none'; el.textContent=''; }
+  });
+}
+
+function _loginMsg(msg, tipo){
+  var err = document.getElementById('login-error');
+  var ok  = document.getElementById('login-ok');
+  if(tipo === 'ok'){ if(err) err.style.display='none'; if(ok){ok.textContent=msg;ok.style.display='block';} }
+  else             { if(ok)  ok.style.display='none';  if(err){err.textContent=msg;err.style.display='block';} }
+}
+
+async function loginConEmail(){
+  var email = (document.getElementById('login-email')||{}).value.trim().toLowerCase();
+  var pass  = (document.getElementById('login-password')||{}).value;
+  if(!email||!pass){ _loginMsg('Introduce correo y contraseña','err'); return; }
+  if(!email.endsWith(_DOMINIO_CENTRO)){ _loginMsg('Solo se permiten cuentas '+_DOMINIO_CENTRO,'err'); return; }
+  var btn = document.querySelector('#form-login button');
+  if(btn){ btn.disabled=true; btn.textContent='Entrando…'; }
+  var {error} = await supa.auth.signInWithPassword({email, password:pass});
+  if(error){
+    _loginMsg(error.message.includes('Invalid')||error.message.includes('credentials')
+      ? 'Correo o contraseña incorrectos'
+      : error.message.includes('Email not confirmed')
+        ? 'Confirma tu correo antes de entrar (revisa la bandeja de entrada)'
+        : 'Error: '+error.message, 'err');
+    if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
+  }
+}
+
+async function registrarConEmail(){
+  var nombre   = (document.getElementById('reg-nombre')||{}).value.trim();
+  var apellidos= (document.getElementById('reg-apellidos')||{}).value.trim();
+  var email    = (document.getElementById('reg-email')||{}).value.trim().toLowerCase();
+  var pass     = (document.getElementById('reg-password')||{}).value;
+  var pass2    = (document.getElementById('reg-password2')||{}).value;
+  if(!nombre)                              { _loginMsg('Introduce tu nombre','err'); return; }
+  if(!email)                               { _loginMsg('Introduce tu correo','err'); return; }
+  if(!email.endsWith(_DOMINIO_CENTRO))     { _loginMsg('Solo se permiten cuentas '+_DOMINIO_CENTRO,'err'); return; }
+  if(pass.length < 8)                      { _loginMsg('La contraseña debe tener al menos 8 caracteres','err'); return; }
+  if(pass !== pass2)                       { _loginMsg('Las contraseñas no coinciden','err'); return; }
+  var btn = document.querySelector('#form-registro button');
+  if(btn){ btn.disabled=true; btn.textContent='Creando cuenta…'; }
+  var {error} = await supa.auth.signUp({
+    email, password: pass,
+    options:{ data:{ nombre, apellidos } }
+  });
+  if(error){
+    _loginMsg(error.message.includes('already registered')
+      ? 'Este correo ya está registrado. Usa la pestaña Entrar.'
+      : 'Error: '+error.message, 'err');
+    if(btn){ btn.disabled=false; btn.textContent='Crear cuenta'; }
+  } else {
+    _loginMsg('✅ Cuenta creada. Revisa tu bandeja de '+email+' y confirma el enlace antes de entrar.','ok');
+    if(btn){ btn.disabled=false; btn.textContent='Crear cuenta'; }
+    // Limpiar campos
+    ['reg-nombre','reg-apellidos','reg-email','reg-password','reg-password2'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.value='';
+    });
+  }
+}
+
 async function logout(){
   await supa.auth.signOut();
   USUARIO_ACTUAL=null;
@@ -2459,6 +2538,9 @@ async function subirFotoAlumno(input){
   }catch(e){ flash('Error al subir: '+(e.message||e),'#ef4444'); }
 }
 
+window.loginShowTab                  = loginShowTab;
+window.loginConEmail                 = loginConEmail;
+window.registrarConEmail             = registrarConEmail;
 window.renderPerfil                  = renderPerfil;
 window.guardarNombrePerfil           = guardarNombrePerfil;
 window.guardarAnoCurso               = guardarAnoCurso;
