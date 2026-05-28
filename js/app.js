@@ -1986,7 +1986,7 @@ async function renderPerfilProfesor(root){
   var u = USUARIO_ACTUAL;
   var nombre = u.nombre || u.email.split('@')[0];
   var cursoActual = getCursoActual();
-  var {data: usuarios} = await supa.from('perfiles').select('id,nombre,email,rol,created_at').order('rol').order('nombre');
+  var {data: usuarios} = await supa.from('perfiles').select('id,nombre,apellidos,email,rol,grupo,created_at').order('rol').order('nombre');
 
   var cursosOpts = ['2024-25','2025-26','2026-27','2027-28','2028-29'].map(function(y){
     return '<option value="'+y+'"'+(y===cursoActual?' selected':'')+'>'+y+'</option>';
@@ -2003,16 +2003,23 @@ async function renderPerfilProfesor(root){
       : 'background:rgba(99,102,241,.12);color:#6366f1';
     var badgeLabel = usr.rol==='docente' ? 'DOCENTE' : 'ALUMNO';
     var esSelf = usr.id === u.id;
-    var acciones = esSelf
-      ? '<span style="font-size:11px;color:var(--muted)">(tú)</span>'
-      : '<div style="display:flex;gap:6px;justify-content:flex-end">'
-        + '<button class="btn-sm" onclick="cambiarRolUsuario(\''+usr.id+'\',\''+usr.rol+'\')">⇄ Rol</button>'
-        + '<button class="btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444" onclick="eliminarDatosUsuario(\''+usr.id+'\',\''+encodeURIComponent(usr.nombre||usr.email)+'\')">🗑</button>'
-        + '</div>';
+    var nombreCompleto = (usr.nombre||'—') + (usr.apellidos ? ' '+usr.apellidos : '');
+    var acciones = '<div style="display:flex;gap:5px;justify-content:flex-end;align-items:center">'
+      + (esSelf ? '<span style="font-size:11px;color:var(--muted);margin-right:4px">(tú)</span>' : '')
+      + '<button class="btn-sm" title="Editar perfil" onclick="adminEditarPerfil('
+        + '\''+usr.id+'\','
+        + '\''+encodeURIComponent(usr.nombre||'')+'\','
+        + '\''+encodeURIComponent(usr.apellidos||'')+'\','
+        + '\''+encodeURIComponent(usr.grupo||'')+'\','
+        + '\''+usr.rol+'\''
+        + ')">✏️</button>'
+      + (!esSelf ? '<button class="btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444" title="Eliminar datos" onclick="eliminarDatosUsuario(\''+usr.id+'\',\''+encodeURIComponent(usr.nombre||usr.email)+'\')">🗑</button>' : '')
+      + '</div>';
     return '<tr>'
-      +'<td style="padding:10px 14px;font-weight:600;font-size:13px">'+(usr.nombre||'—')+'</td>'
+      +'<td style="padding:10px 14px;font-weight:600;font-size:13px">'+nombreCompleto+'</td>'
       +'<td style="font-size:12px;color:var(--muted)">'+(usr.email||'—')+'</td>'
       +'<td style="text-align:center"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;'+badgeStyle+'">'+badgeLabel+'</span></td>'
+      +'<td style="font-size:12px;color:var(--muted);text-align:center">'+(usr.grupo||'—')+'</td>'
       +'<td style="font-size:12px;color:var(--muted);text-align:center">'+alta+'</td>'
       +'<td style="padding:6px 10px;text-align:right">'+acciones+'</td>'
       +'</tr>';
@@ -2055,7 +2062,7 @@ async function renderPerfilProfesor(root){
     +'<div class="card-header"><div class="card-title">👥 Gestión de usuarios</div><div style="font-size:12px;color:var(--muted)">'+(usuarios||[]).length+' registrados</div></div>'
     +'<div class="card-body" style="padding:0"><div style="overflow-x:auto">'
     +'<table class="dt" style="width:100%"><thead><tr>'
-    +'<th style="text-align:left;padding:10px 14px">Nombre</th><th>Email</th><th>Rol</th><th>Alta</th><th></th>'
+    +'<th style="text-align:left;padding:10px 14px">Nombre completo</th><th>Email</th><th>Rol</th><th>Grupo</th><th>Alta</th><th></th>'
     +'</tr></thead><tbody>'+usrRows+'</tbody></table>'
     +'</div></div></div>'
     // Mantenimiento
@@ -2231,6 +2238,62 @@ function guardarAnoCurso(){
   flash('✅ Curso ' + sel.value + ' activado','#16a34a');
 }
 
+// ─── Admin: editar perfil de cualquier usuario (solo docente) ────────
+function adminEditarPerfil(uid, nombreEnc, apellidosEnc, grupoEnc, rolActual){
+  if(!USUARIO_ACTUAL || USUARIO_ACTUAL.rol !== 'docente'){ flash('Sin permisos','#ef4444'); return; }
+  var nombre   = decodeURIComponent(nombreEnc);
+  var apellidos= decodeURIComponent(apellidosEnc);
+  var grupo    = decodeURIComponent(grupoEnc);
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+
+  var grupos = ['','1ºA','1ºB','2ºA','2ºB'];
+  var grupoOpts = grupos.map(function(g){
+    return '<option value="'+g+'"'+(g===grupo?' selected':'')+'>'+( g||'Sin grupo')+'</option>';
+  }).join('');
+  var rolOpts = ['alumno','docente'].map(function(r){
+    return '<option value="'+r+'"'+(r===rolActual?' selected':'')+'>'+r.charAt(0).toUpperCase()+r.slice(1)+'</option>';
+  }).join('');
+
+  overlay.innerHTML=
+    '<div style="background:#fff;border-radius:14px;padding:1.5rem;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)">'
+    +'<div style="font-weight:700;font-size:1rem;color:var(--navy);margin-bottom:1.2rem">✏️ Editar perfil de usuario</div>'
+    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Nombre</label>'
+    +'<input id="adm-nombre" class="fs" value="'+nombre+'" style="margin-bottom:10px">'
+    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Apellidos</label>'
+    +'<input id="adm-apellidos" class="fs" value="'+apellidos+'" style="margin-bottom:10px">'
+    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Grupo</label>'
+    +'<select id="adm-grupo" class="fs" style="margin-bottom:10px">'+grupoOpts+'</select>'
+    +'<label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Rol</label>'
+    +'<select id="adm-rol" class="fs" style="margin-bottom:1.4rem">'+rolOpts+'</select>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +'<button id="adm-cancel" class="btn btn-g">Cancelar</button>'
+    +'<button id="adm-save" class="btn btn-p">Guardar cambios</button>'
+    +'</div></div>';
+
+  document.body.appendChild(overlay);
+  overlay.querySelector('#adm-cancel').onclick = function(){ document.body.removeChild(overlay); };
+  overlay.onclick = function(e){ if(e.target===overlay) document.body.removeChild(overlay); };
+
+  overlay.querySelector('#adm-save').onclick = async function(){
+    var btn = this; btn.disabled=true; btn.textContent='Guardando…';
+    var nuevoNombre   = overlay.querySelector('#adm-nombre').value.trim();
+    var nuevoApellidos= overlay.querySelector('#adm-apellidos').value.trim();
+    var nuevoGrupo    = overlay.querySelector('#adm-grupo').value;
+    var nuevoRol      = overlay.querySelector('#adm-rol').value;
+    if(!nuevoNombre){ flash('El nombre no puede estar vacío','#ef4444'); btn.disabled=false; btn.textContent='Guardar cambios'; return; }
+    var {error} = await supa.from('perfiles').update({
+      nombre:nuevoNombre, apellidos:nuevoApellidos,
+      grupo:nuevoGrupo||null, rol:nuevoRol
+    }).eq('id', uid);
+    if(error){ flash('Error: '+error.message,'#ef4444'); btn.disabled=false; btn.textContent='Guardar cambios'; return; }
+    document.body.removeChild(overlay);
+    flash('✅ Perfil actualizado','#16a34a');
+    setTimeout(function(){ renderPerfil(); }, 500);
+  };
+}
+
 async function cambiarRolUsuario(uid, rolActual){
   var nuevoRol = rolActual === 'docente' ? 'alumno' : 'docente';
   if(!confirm('¿Cambiar el rol de este usuario a ' + nuevoRol.toUpperCase() + '?')) return;
@@ -2318,6 +2381,7 @@ window.renderPerfil                  = renderPerfil;
 window.guardarNombrePerfil           = guardarNombrePerfil;
 window.guardarAnoCurso               = guardarAnoCurso;
 window.cambiarRolUsuario             = cambiarRolUsuario;
+window.adminEditarPerfil             = adminEditarPerfil;
 window.eliminarDatosUsuario          = eliminarDatosUsuario;
 window.generarBackupPlataforma       = generarBackupPlataforma;
 window.confirmarLimpiezaPlataforma   = confirmarLimpiezaPlataforma;
