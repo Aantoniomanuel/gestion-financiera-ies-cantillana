@@ -2073,8 +2073,11 @@ async function renderPerfilProfesor(root){
     +'<div style="background:var(--surface-2,rgba(0,0,0,.03));border-radius:10px;padding:14px">'
     +'<div style="font-weight:600;font-size:13px;margin-bottom:4px">💾 Copia de seguridad</div>'
     +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Descarga todos los ejercicios, entregas y notas del curso en un archivo Excel antes de pasar al siguiente año.</div>'
-    +'<button class="btn btn-p" onclick="generarBackupPlataforma()">Descargar backup Excel</button>'
-    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn btn-p" onclick="generarBackupPlataforma()">⬇ Descargar backup Excel</button>'
+    +'<button class="btn btn-g" onclick="document.getElementById(\'backup-restore-inp\').click()">📥 Restaurar backup</button>'
+    +'<input type="file" id="backup-restore-inp" accept=".xlsx" style="display:none" onchange="restaurarBackupPlataforma(this)">'
+    +'</div></div>'
     // Limpieza
     +'<div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px">'
     +'<div style="font-weight:600;font-size:13px;margin-bottom:4px;color:#ef4444">⚠️ Puesta a punto para nuevo curso</div>'
@@ -2340,6 +2343,85 @@ async function generarBackupPlataforma(){
   }catch(e){ flash('Error: '+e.message,'#ef4444'); }
 }
 
+async function restaurarBackupPlataforma(input){
+  var file = input.files[0]; input.value = '';
+  if(!file) return;
+  if(!window.XLSX){ flash('Librería Excel no disponible','#ef4444'); return; }
+
+  flash('Leyendo archivo...','#6366f1');
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:'array'});
+
+      // Leer hojas relevantes (Ejercicios, Entregas, Actividades)
+      // Se omiten Alumnos y Accesos para no sobreescribir datos de sesión activa
+      var hojas = {
+        ejercicios_realizados: XLSX.utils.sheet_to_json(wb.Sheets['Ejercicios']||{}),
+        entregas:              XLSX.utils.sheet_to_json(wb.Sheets['Entregas']||{}),
+        actividades:           XLSX.utils.sheet_to_json(wb.Sheets['Actividades']||{})
+      };
+
+      var totalEj  = hojas.ejercicios_realizados.length;
+      var totalEnt = hojas.entregas.length;
+      var totalAct = hojas.actividades.length;
+
+      if(!totalEj && !totalEnt && !totalAct){
+        flash('El archivo no contiene datos reconocibles','#ef4444'); return;
+      }
+
+      // Modal de confirmación con resumen
+      var overlay = document.createElement('div');
+      overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+      overlay.innerHTML=
+        '<div style="background:#fff;border-radius:14px;padding:1.5rem;max-width:440px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.3)">'
+        +'<div style="font-weight:700;font-size:1rem;color:var(--navy);margin-bottom:.5rem">📥 Restaurar copia de seguridad</div>'
+        +'<div style="font-size:13px;color:var(--muted);margin-bottom:1.2rem">Se restaurarán los siguientes datos. Los registros existentes con el mismo ID se actualizarán.</div>'
+        +'<div style="background:var(--surface2,#f9f9f9);border-radius:10px;padding:12px;margin-bottom:1.2rem;display:flex;flex-direction:column;gap:8px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:13px"><span>🏃 Ejercicios realizados</span><strong>'+totalEj+'</strong></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:13px"><span>📋 Entregas</span><strong>'+totalEnt+'</strong></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:13px"><span>🎯 Actividades</span><strong>'+totalAct+'</strong></div>'
+        +'</div>'
+        +'<div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px;font-size:12px;color:#b91c1c;margin-bottom:1.2rem">'
+        +'⚠️ Esta acción no puede deshacerse. Los datos actuales con el mismo ID serán sobreescritos.'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+        +'<button id="rst-cancel" class="btn btn-g">Cancelar</button>'
+        +'<button id="rst-ok" class="btn" style="background:#1a2744;color:#fff">Restaurar ahora</button>'
+        +'</div></div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector('#rst-cancel').onclick = function(){ document.body.removeChild(overlay); };
+      overlay.onclick = function(ev){ if(ev.target===overlay) document.body.removeChild(overlay); };
+
+      overlay.querySelector('#rst-ok').onclick = async function(){
+        var btn = this; btn.disabled=true; btn.textContent='Restaurando…';
+        try{
+          var errores = [];
+          // Upsert por lotes para no superar límites de Supabase
+          async function upsertLotes(tabla, filas){
+            var lote = 200;
+            for(var i=0; i<filas.length; i+=lote){
+              var {error} = await supa.from(tabla).upsert(filas.slice(i,i+lote), {onConflict:'id'});
+              if(error) errores.push(tabla+': '+error.message);
+            }
+          }
+          if(totalEj)  await upsertLotes('ejercicios_realizados', hojas.ejercicios_realizados);
+          if(totalEnt) await upsertLotes('entregas',              hojas.entregas);
+          if(totalAct) await upsertLotes('actividades',           hojas.actividades);
+
+          document.body.removeChild(overlay);
+          if(errores.length){
+            flash('Restaurado con errores: '+errores[0],'#f59e0b');
+          } else {
+            flash('✅ Backup restaurado correctamente','#16a34a');
+          }
+        }catch(err){ flash('Error al restaurar: '+err.message,'#ef4444'); btn.disabled=false; btn.textContent='Restaurar ahora'; }
+      };
+    }catch(err){ flash('Error leyendo el archivo: '+err.message,'#ef4444'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 async function confirmarLimpiezaPlataforma(){
   if(!confirm('⚠️ LIMPIEZA DE PLATAFORMA\n\n¿Borrar TODO el progreso de los alumnos?\n\n• Ejercicios realizados → eliminados\n• Entregas → eliminadas\n• Usuarios y actividades → conservados\n\nHaz primero la copia de seguridad.\n\nPulsa OK para continuar.')) return;
   var curso = getCursoActual();
@@ -2384,5 +2466,6 @@ window.cambiarRolUsuario             = cambiarRolUsuario;
 window.adminEditarPerfil             = adminEditarPerfil;
 window.eliminarDatosUsuario          = eliminarDatosUsuario;
 window.generarBackupPlataforma       = generarBackupPlataforma;
+window.restaurarBackupPlataforma     = restaurarBackupPlataforma;
 window.confirmarLimpiezaPlataforma   = confirmarLimpiezaPlataforma;
 window.subirFotoAlumno               = subirFotoAlumno;
