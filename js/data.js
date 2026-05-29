@@ -10748,7 +10748,7 @@ function renderBloqueLectura(bloque, media){
   return wrap;
 }
 
-// ── Render contenidos en la UD (sección colLeft) ──────
+// ── Render contenidos en la UD — navegador de lecciones ──
 function renderContenidosInteractivos(udId, container){
   var bloques = CONT_DATA[udId] || [];
   var media = getContMedia();
@@ -10768,49 +10768,124 @@ function renderContenidosInteractivos(udId, container){
     container.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">Sin contenido disponible todavía.</div>';
     return;
   }
-  // Agrupar por temaRef
-  var grupos=[]; var sinTema=[];
-  bloquesVisibles.forEach(function(bloque){
-    if(bloque.temaRef){ var g=grupos.find(function(x){ return x.tema===bloque.temaRef; }); if(!g){ g={tema:bloque.temaRef,bloques:[]}; grupos.push(g); } g.bloques.push(bloque); }
-    else { sinTema.push(bloque); }
-  });
 
-  grupos.forEach(function(g, gi){
-    var wrap=document.createElement('div');
-    wrap.style.cssText='border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden';
-    var hdr=document.createElement('div');
-    hdr.dataset.tema=g.tema;
-    hdr.style.cssText='display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--navy);cursor:pointer;user-select:none';
-    var numEl=document.createElement('div');
-    numEl.style.cssText='width:26px;height:26px;border-radius:6px;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0';
-    numEl.textContent=gi+1;
-    var titEl=document.createElement('div'); titEl.style.cssText='flex:1;font-size:14px;font-weight:700;color:#fff'; titEl.textContent=g.tema;
-    var cntEl=document.createElement('div'); cntEl.style.cssText='font-size:11px;color:rgba(255,255,255,.5);flex-shrink:0';
-    cntEl.textContent=g.bloques.length+' bloque'+(g.bloques.length!==1?'s':'');
-    var arrEl=document.createElement('span'); arrEl.style.cssText='color:rgba(255,255,255,.6);font-size:11px;transition:transform .25s;flex-shrink:0'; arrEl.textContent='▼';
-    hdr.appendChild(numEl); hdr.appendChild(titEl); hdr.appendChild(cntEl); hdr.appendChild(arrEl);
-    var body=document.createElement('div'); body.style.cssText='overflow:hidden;max-height:0;transition:max-height .3s ease';
-    var bInner=document.createElement('div'); bInner.style.cssText='padding:12px 16px';
-    g.bloques.forEach(function(b){
-      var bWrap=document.createElement('div'); bWrap.style.position='relative';
-      if(ROL==='profesor' && !b.publicado){
-        var draftBadge=document.createElement('div');
-        draftBadge.style.cssText='position:absolute;top:6px;right:6px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;z-index:1;pointer-events:none';
-        draftBadge.textContent='⚠️ Borrador'; bWrap.appendChild(draftBadge);
-      }
-      bWrap.appendChild(renderBloqueLectura(b,media)); bInner.appendChild(bWrap);
-    });
-    body.appendChild(bInner);
-    var isOpen=false;
-    hdr.dataset.tema=g.tema;
-    hdr.onclick=(function(bd,ar){ return function(){
-      isOpen=!isOpen; bd.style.maxHeight=isOpen?bd.scrollHeight+'px':'0px';
-      ar.style.transform=isOpen?'rotate(180deg)':'';
-      if(isOpen) setTimeout(function(){ bd.style.maxHeight=bd.scrollHeight+'px'; },310);
-    };})(body,arrEl);
-    wrap.appendChild(hdr); wrap.appendChild(body); container.appendChild(wrap);
+  // Agrupar por temaRef → cada grupo es una lección
+  var lecciones=[]; var sinTema=[];
+  bloquesVisibles.forEach(function(b){
+    if(b.temaRef){
+      var l=lecciones.find(function(x){ return x.tema===b.temaRef; });
+      if(!l){ l={tema:b.temaRef, bloques:[]}; lecciones.push(l); }
+      l.bloques.push(b);
+    } else { sinTema.push(b); }
   });
-  sinTema.forEach(function(b){ container.appendChild(renderBloqueLectura(b,media)); });
+  // Bloques sin tema → lección extra al final
+  if(sinTema.length) lecciones.push({tema:'Contenido general', bloques:sinTema});
+  if(!lecciones.length) return;
+
+  var idx = 0; // lección actual
+
+  // ── Construir el navegador ────────────────────────────
+  var nav = document.createElement('div');
+  nav.style.cssText = 'display:flex;flex-direction:column;gap:0';
+
+  // Barra de progreso + selector de lecciones (pills)
+  var pillBar = document.createElement('div');
+  pillBar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px';
+
+  // Cabecera de la lección activa
+  var lecHdr = document.createElement('div');
+  lecHdr.style.cssText = 'background:var(--navy);border-radius:12px 12px 0 0;padding:16px 20px;display:flex;align-items:center;gap:14px';
+
+  // Cuerpo con los bloques de la lección
+  var lecBody = document.createElement('div');
+  lecBody.style.cssText = 'border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;padding:16px;min-height:120px';
+
+  // Pie de navegación
+  var lecNav = document.createElement('div');
+  lecNav.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px';
+
+  var btnPrev = document.createElement('button');
+  btnPrev.className='btn btn-g';
+  btnPrev.style.cssText='display:flex;align-items:center;gap:6px;font-size:13px';
+  btnPrev.innerHTML='← Lección anterior';
+
+  var cuentaEl = document.createElement('div');
+  cuentaEl.style.cssText='font-size:12px;color:var(--muted);text-align:center;flex:1';
+
+  var btnNext = document.createElement('button');
+  btnNext.className='btn btn-p';
+  btnNext.style.cssText='display:flex;align-items:center;gap:6px;font-size:13px';
+  btnNext.innerHTML='Siguiente lección →';
+
+  lecNav.appendChild(btnPrev);
+  lecNav.appendChild(cuentaEl);
+  lecNav.appendChild(btnNext);
+
+  // ── Función de render de la lección activa ────────────
+  function mostrarLeccion(i){
+    idx = i;
+    var lec = lecciones[i];
+    var total = lecciones.length;
+
+    // Pills
+    pillBar.innerHTML='';
+    lecciones.forEach(function(l, li){
+      var pill=document.createElement('button');
+      var activo = li===i;
+      pill.style.cssText='padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid '+(activo?'var(--navy)':'var(--border)')+';background:'+(activo?'var(--navy)':'transparent')+';color:'+(activo?'#fff':'var(--muted)')+';transition:.15s';
+      pill.textContent=(li+1)+'. '+l.tema.slice(0,28)+(l.tema.length>28?'…':'');
+      pill.onclick=(function(ii){ return function(){ mostrarLeccion(ii); }; })(li);
+      pillBar.appendChild(pill);
+    });
+
+    // Cabecera
+    lecHdr.innerHTML='';
+    var numBadge=document.createElement('div');
+    numBadge.style.cssText='width:34px;height:34px;border-radius:8px;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0';
+    numBadge.textContent=i+1;
+    var titDiv=document.createElement('div'); titDiv.style.cssText='flex:1';
+    var titH=document.createElement('div'); titH.style.cssText='font-size:15px;font-weight:700;color:#fff'; titH.textContent=lec.tema;
+    var titSub=document.createElement('div'); titSub.style.cssText='font-size:11px;color:rgba(255,255,255,.5);margin-top:2px';
+    titSub.textContent=lec.bloques.length+' bloque'+(lec.bloques.length!==1?'s':'')+' · Lección '+(i+1)+' de '+total;
+    titDiv.appendChild(titH); titDiv.appendChild(titSub);
+    lecHdr.appendChild(numBadge); lecHdr.appendChild(titDiv);
+
+    // Bloques
+    lecBody.innerHTML='';
+    lec.bloques.forEach(function(b){
+      var bWrap=document.createElement('div'); bWrap.style.cssText='position:relative;margin-bottom:10px';
+      if(ROL==='profesor' && !b.publicado){
+        var badge=document.createElement('div');
+        badge.style.cssText='position:absolute;top:6px;right:6px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;z-index:1;pointer-events:none';
+        badge.textContent='⚠️ Borrador'; bWrap.appendChild(badge);
+      }
+      bWrap.appendChild(renderBloqueLectura(b, media));
+      lecBody.appendChild(bWrap);
+    });
+
+    // Contador y botones
+    cuentaEl.innerHTML='<div style="font-weight:600;color:var(--navy)">'+(i+1)+' / '+total+'</div>'+
+      '<div style="font-size:11px;margin-top:1px">lección</div>';
+    btnPrev.disabled = i===0;
+    btnPrev.style.opacity = i===0?'0.35':'1';
+    btnNext.disabled = i===total-1;
+    btnNext.style.opacity = i===total-1?'0.35':'1';
+    btnNext.innerHTML = i===total-1 ? '✓ Completado' : 'Siguiente lección →';
+
+    // Scroll al inicio del contenido
+    container.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  btnPrev.onclick = function(){ if(idx>0) mostrarLeccion(idx-1); };
+  btnNext.onclick = function(){ if(idx<lecciones.length-1) mostrarLeccion(idx+1); };
+
+  nav.appendChild(pillBar);
+  nav.appendChild(lecHdr);
+  nav.appendChild(lecBody);
+  nav.appendChild(lecNav);
+  container.appendChild(nav);
+
+  mostrarLeccion(0);
 }
 
 // ── Editor de contenidos ──────────────────────────────
