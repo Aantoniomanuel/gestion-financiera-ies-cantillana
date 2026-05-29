@@ -294,7 +294,9 @@ var CONT_DATA = (function(){ try{ return JSON.parse(localStorage.getItem(CONT_KE
 function saveCont(){ localStorage.setItem(CONT_KEY, JSON.stringify(CONT_DATA)); }
 
 // ── Contenidos por defecto ud3 — Los Seguros (importados desde b4-los-seguros-v2.html) ──
-if(!CONT_DATA['ud3'] || !CONT_DATA['ud3'].length){
+// Reinicializar si faltan los bloques de gráficos SVG (versión con imágenes)
+if(!CONT_DATA['ud3'] || !CONT_DATA['ud3'].length ||
+   !CONT_DATA['ud3'].find(function(b){ return b.id==='blq_seg_201g'; })){
   CONT_DATA['ud3'] = [
     // ── LECCIÓN 1: El riesgo y la función del seguro ──────────────────────
     {id:'blq_seg_101',tipo:'texto',publicado:false,
