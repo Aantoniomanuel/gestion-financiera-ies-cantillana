@@ -326,3 +326,58 @@ body.dark .cs-btn{background:#11151f;border-color:rgba(255,255,255,.12);color:#c
 body.dark .cs-btn:hover{background:#1c1a0e}
 body.dark .noticia-card:hover,.dark .accion-card:hover{border-color:var(--gold)}
 body.dark .s-sec{color:rgba(255,255,255,.22)}
+
+/* ══ Acordeón de contenidos (dos niveles) ══════════════ */
+/* Nivel 1: epígrafe */
+.ep-acc{margin-bottom:10px;border-radius:var(--rl);overflow:hidden;box-shadow:0 2px 8px rgba(26,39,68,.06)}
+.ep-trigger{width:100%;display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);cursor:pointer;text-align:left;transition:background .18s,border-color .18s;font-family:'DM Sans',sans-serif}
+.ep-trigger:hover{background:var(--surface2);border-color:var(--border-md)}
+.ep-acc.open .ep-trigger{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);border-color:var(--navy);border-radius:var(--rl) var(--rl) 0 0;color:#fff}
+.ep-num{width:30px;height:30px;border-radius:50%;background:var(--blue-bg);color:var(--blue);font-size:.85rem;font-weight:800;display:grid;place-items:center;flex-shrink:0;transition:background .18s,color .18s}
+.ep-acc.open .ep-num{background:rgba(201,168,76,.35);color:var(--gold-light)}
+.ep-label-wrap{flex:1;min-width:0}
+.ep-title{font-size:.95rem;font-weight:700;display:block;font-family:'DM Sans',sans-serif}
+.ep-meta{font-size:.73rem;opacity:.6;margin-top:2px;display:block}
+.ep-acc.open .ep-meta{opacity:.78}
+.ep-chevron{width:22px;height:22px;flex-shrink:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.ep-acc.open .ep-chevron{transform:rotate(180deg)}
+.ep-chevron path{fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .18s}
+.ep-acc.open .ep-chevron path{stroke:rgba(255,255,255,.75)}
+.ep-body{border:1px solid var(--border);border-top:none;border-radius:0 0 var(--rl) var(--rl);background:var(--surface);display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.ep-acc.open .ep-body{grid-template-rows:1fr}
+.ep-inner{overflow:hidden;min-height:0;padding:0}
+.ep-acc.open .ep-inner{padding:10px 12px}
+/* Nivel 2: bloque */
+.blq-acc{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:8px;background:var(--surface)}
+.blq-acc:last-child{margin-bottom:0}
+.blq-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);cursor:pointer;user-select:none;transition:background .15s}
+.blq-hdr:hover{background:var(--bg)}
+.blq-chevron{width:16px;height:16px;flex-shrink:0;margin-left:auto;transition:transform .25s cubic-bezier(.4,0,.2,1);flex-shrink:0}
+.blq-acc.b-open .blq-chevron{transform:rotate(180deg)}
+.blq-chevron path{fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.blq-body{background:var(--surface);display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.blq-acc.b-open .blq-body{grid-template-rows:1fr}
+.blq-inner{overflow:hidden;padding:0 14px;font-size:13.5px;line-height:1.7;color:var(--text)}
+.blq-acc.b-open .blq-inner{padding:14px}
+/* Tipo badges */
+.btype{font-size:.69rem;font-weight:700;padding:2px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;white-space:nowrap}
+.bt-texto{background:var(--blue-bg);color:var(--blue)}
+.bt-concepto{background:#ede9fe;color:#5b21b6}
+.bt-grafico{background:var(--surface2);color:var(--navy);border:1px solid var(--border-md)}
+.bt-actividad{background:var(--amber-bg);color:var(--amber)}
+.bt-video,.bt-youtube{background:var(--red-bg);color:var(--red)}
+.bt-imagen{background:var(--green-bg);color:var(--green)}
+/* Controles */
+.ep-controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.ctrl-btn{font-size:.74rem;font-weight:600;padding:5px 13px;border-radius:999px;border:1px solid var(--border-md);background:var(--surface);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s;font-family:'DM Sans',sans-serif}
+.ctrl-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border-md)}
+.ctrl-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.ep-prog-wrap{flex:1;min-width:140px}
+.ep-prog-lbl{font-size:.7rem;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between}
+.ep-prog-bar{height:4px;background:var(--border);border-radius:999px;overflow:hidden}
+.ep-prog-fill{height:100%;background:linear-gradient(90deg,var(--navy),var(--navy2));border-radius:999px;transition:width .4s cubic-bezier(.4,0,.2,1);width:0}
+/* Borrador badge */
+.blq-draft{font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:10px}
+/* Contenido interior */
+.blq-inner white-space-pre{white-space:pre-wrap}
+/* ══ Fin acordeón ══════════════════════════════════════ */

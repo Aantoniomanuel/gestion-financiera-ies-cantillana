@@ -10887,7 +10887,7 @@ function renderBloqueLectura(bloque, media){
   return wrap;
 }
 
-// ── Render contenidos en la UD — navegador de lecciones integrado ──
+// ── Acordeón de contenidos (dos niveles) ─────────────
 function renderContenidosInteractivos(udId, container){
   var bloques = CONT_DATA[udId] || [];
   var media = getContMedia();
@@ -10901,135 +10901,179 @@ function renderContenidosInteractivos(udId, container){
     container.appendChild(empty); return;
   }
 
-  // Filtrar borradores para alumnos
   var bloquesVisibles = ROL==='profesor' ? bloques : bloques.filter(function(b){ return b.publicado; });
   if(!bloquesVisibles.length && ROL!=='profesor'){
     container.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px">Sin contenido disponible todavía.</div>';
     return;
   }
 
-  // Agrupar por temaRef → cada grupo es una lección
-  var lecciones=[]; var sinTema=[];
+  // Agrupar por temaRef
+  var grupos=[]; var sinTema=[];
   bloquesVisibles.forEach(function(b){
     if(b.temaRef){
-      var l=lecciones.find(function(x){ return x.tema===b.temaRef; });
-      if(!l){ l={tema:b.temaRef, bloques:[]}; lecciones.push(l); }
-      l.bloques.push(b);
+      var g=grupos.find(function(x){ return x.tema===b.temaRef; });
+      if(!g){ g={tema:b.temaRef,bloques:[]}; grupos.push(g); }
+      g.bloques.push(b);
     } else { sinTema.push(b); }
   });
-  if(sinTema.length) lecciones.push({tema:'Contenido general', bloques:sinTema});
-  if(!lecciones.length) return;
+  if(sinTema.length) grupos.push({tema:'Contenido general',bloques:sinTema});
+  if(!grupos.length) return;
 
-  var idx = 0;
-  var total = lecciones.length;
+  var total = grupos.length;
+  var chvSVG = '<svg class="ep-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+  var chvBSVG = '<svg class="blq-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
 
-  // ── Barra de progreso de pasos ────────────────────────
-  var stepsBar = document.createElement('div');
-  stepsBar.style.cssText = 'margin-bottom:16px';
+  // ── Controles ──────────────────────────────────────────
+  var controls = document.createElement('div');
+  controls.className = 'ep-controls';
 
-  // Línea de progreso
-  var progressTrack = document.createElement('div');
-  progressTrack.style.cssText = 'height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;overflow:hidden';
-  var progressFill = document.createElement('div');
-  progressFill.style.cssText = 'height:100%;background:var(--gold);border-radius:2px;transition:width .3s ease';
-  progressTrack.appendChild(progressFill);
-  stepsBar.appendChild(progressTrack);
+  var btnExp = document.createElement('button'); btnExp.className='ctrl-btn'; btnExp.textContent='Expandir todo';
+  var btnExpB = document.createElement('button'); btnExpB.className='ctrl-btn'; btnExpB.textContent='Expandir con bloques';
+  var btnCol = document.createElement('button'); btnCol.className='ctrl-btn'; btnCol.textContent='Colapsar todo';
 
-  // Chips de lecciones
-  var stepsRow = document.createElement('div');
-  stepsRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center';
-  stepsBar.appendChild(stepsRow);
+  var progWrap = document.createElement('div'); progWrap.className='ep-prog-wrap';
+  var progLbl = document.createElement('div'); progLbl.className='ep-prog-lbl';
+  var progLblTxt = document.createElement('span'); progLblTxt.textContent='Progreso de lectura';
+  var progLblNum = document.createElement('span'); progLblNum.textContent='0 / '+total+' secciones';
+  progLbl.appendChild(progLblTxt); progLbl.appendChild(progLblNum);
+  var progBar = document.createElement('div'); progBar.className='ep-prog-bar';
+  var progFill = document.createElement('div'); progFill.className='ep-prog-fill';
+  progBar.appendChild(progFill); progWrap.appendChild(progLbl); progWrap.appendChild(progBar);
 
-  // ── Título de la lección activa ───────────────────────
-  var lecTitBar = document.createElement('div');
-  lecTitBar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px';
+  controls.appendChild(btnExp); controls.appendChild(btnExpB); controls.appendChild(btnCol); controls.appendChild(progWrap);
+  container.appendChild(controls);
 
-  // ── Bloques de la lección ─────────────────────────────
-  var lecBody = document.createElement('div');
-
-  // ── Pie de navegación ─────────────────────────────────
-  var lecNav = document.createElement('div');
-  lecNav.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);gap:8px';
-
-  var btnPrev = document.createElement('button');
-  btnPrev.className = 'btn btn-g btn-sm';
-  btnPrev.innerHTML = '← Anterior';
-
-  var cuentaEl = document.createElement('div');
-  cuentaEl.style.cssText = 'flex:1;text-align:center;font-size:12px;color:var(--muted)';
-
-  var btnNext = document.createElement('button');
-  btnNext.className = 'btn btn-p btn-sm';
-  btnNext.innerHTML = 'Siguiente →';
-
-  lecNav.appendChild(btnPrev);
-  lecNav.appendChild(cuentaEl);
-  lecNav.appendChild(btnNext);
-
-  // ── Render de la lección activa ───────────────────────
-  function mostrarLeccion(i){
-    idx = i;
-    var lec = lecciones[i];
-
-    // Progreso
-    progressFill.style.width = Math.round(((i+1)/total)*100)+'%';
-
-    // Chips de lección (numerados)
-    stepsRow.innerHTML='';
-    lecciones.forEach(function(l, li){
-      var chip = document.createElement('button');
-      var activo = li===i;
-      chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:99px;border:1.5px solid '+(activo?'var(--navy)':'var(--border-lt,rgba(0,0,0,.12))')+';background:'+(activo?'var(--navy)':'transparent')+';cursor:pointer;transition:.15s;font-size:11px;font-weight:600;color:'+(activo?'#fff':'var(--muted)');
-      chip.innerHTML = '<span style="width:18px;height:18px;border-radius:50%;background:'+(activo?'var(--gold)':'var(--border)')+';color:'+(activo?'var(--navy)':'var(--muted)')+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">'+(li+1)+'</span>'
-        +(activo?'<span style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+l.tema.slice(0,22)+(l.tema.length>22?'…':'')+'</span>':'');
-      chip.onclick=(function(ii){ return function(){ mostrarLeccion(ii); }; })(li);
-      stepsRow.appendChild(chip);
-    });
-
-    // Título de la lección
-    lecTitBar.innerHTML='';
-    var numBadge=document.createElement('span');
-    numBadge.style.cssText='width:26px;height:26px;border-radius:6px;background:var(--navy);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0';
-    numBadge.textContent=i+1;
-    var titEl=document.createElement('span');
-    titEl.style.cssText='font-size:14px;font-weight:700;color:var(--text);flex:1';
-    titEl.textContent=lec.tema;
-    var subEl=document.createElement('span');
-    subEl.style.cssText='font-size:11px;color:var(--muted);white-space:nowrap';
-    subEl.textContent=lec.bloques.length+' apartado'+(lec.bloques.length!==1?'s':'');
-    lecTitBar.appendChild(numBadge);
-    lecTitBar.appendChild(titEl);
-    lecTitBar.appendChild(subEl);
-
-    // Bloques
-    lecBody.innerHTML='';
-    lec.bloques.forEach(function(b){
-      var bWrap=document.createElement('div'); bWrap.style.cssText='position:relative;margin-bottom:10px';
-      if(ROL==='profesor' && !b.publicado){
-        var badge=document.createElement('div');
-        badge.style.cssText='position:absolute;top:6px;right:6px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;z-index:1;pointer-events:none';
-        badge.textContent='⚠️ Borrador'; bWrap.appendChild(badge);
-      }
-      bWrap.appendChild(renderBloqueLectura(b, media));
-      lecBody.appendChild(bWrap);
-    });
-
-    // Pie
-    cuentaEl.textContent=(i+1)+' de '+total;
-    btnPrev.disabled = i===0; btnPrev.style.opacity=i===0?'0.35':'1';
-    btnNext.disabled = i===total-1; btnNext.style.opacity=i===total-1?'0.35':'1';
-    btnNext.innerHTML = i===total-1 ? '✓ Completado' : 'Siguiente →';
+  // Función de actualización del progreso
+  var epAccordions = [];
+  function updateProgress(){
+    var open = epAccordions.filter(function(a){ return a.classList.contains('open'); }).length;
+    progLblNum.textContent = open+' / '+total+' secciones';
+    progFill.style.width = Math.round((open/total)*100)+'%';
   }
 
-  btnPrev.onclick = function(){ if(idx>0) mostrarLeccion(idx-1); };
-  btnNext.onclick = function(){ if(idx<lecciones.length-1) mostrarLeccion(idx+1); };
+  // ── Acordeones de nivel 1 (epígrafes) ────────────────
+  grupos.forEach(function(g, gi){
+    var info = BLOQUE_INFO.texto;
 
-  container.appendChild(stepsBar);
-  container.appendChild(lecTitBar);
-  container.appendChild(lecBody);
-  container.appendChild(lecNav);
+    // ── Meta del epígrafe: contar tipos de bloques ──────
+    var tiposCnt = {};
+    g.bloques.forEach(function(b){ tiposCnt[b.tipo]=(tiposCnt[b.tipo]||0)+1; });
+    var metaStr = g.bloques.length+' bloque'+(g.bloques.length!==1?'s':'')+' · '
+      +Object.keys(tiposCnt).map(function(t){ return (BLOQUE_INFO[t]||info).ico+' '+tiposCnt[t]; }).join(' ');
 
-  mostrarLeccion(0);
+    var epDiv = document.createElement('div');
+    epDiv.className = 'ep-acc';
+    epDiv.id = 'ep-acc-'+udId+'-'+gi;
+
+    // Trigger
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'ep-trigger';
+    trigger.setAttribute('aria-expanded','false');
+    trigger.innerHTML =
+      '<span class="ep-num">'+(gi+1)+'</span>'+
+      '<span class="ep-label-wrap">'+
+        '<span class="ep-title">'+g.tema+'</span>'+
+        '<span class="ep-meta">'+metaStr+'</span>'+
+      '</span>'+chvSVG;
+
+    // Body
+    var epBody = document.createElement('div');
+    epBody.className = 'ep-body';
+    var epInner = document.createElement('div');
+    epInner.className = 'ep-inner';
+
+    // ── Bloques de nivel 2 ────────────────────────────
+    g.bloques.forEach(function(b){
+      var bInfo = BLOQUE_INFO[b.tipo] || BLOQUE_INFO.texto;
+      var blqDiv = document.createElement('div');
+      blqDiv.className = 'blq-acc';
+
+      var blqHdr = document.createElement('div');
+      blqHdr.className = 'blq-hdr';
+      blqHdr.innerHTML =
+        '<span class="btype bt-'+b.tipo+'">'+bInfo.ico+' '+bInfo.label+'</span>'+
+        (b.titulo?'<span style="font-size:12px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+b.titulo+'</span>':'')+
+        (ROL==='profesor'&&!b.publicado?'<span class="blq-draft">⚠️ Borrador</span>':'')+
+        chvBSVG;
+
+      var blqBody = document.createElement('div');
+      blqBody.className = 'blq-body';
+      var blqInner = document.createElement('div');
+      blqInner.className = 'blq-inner';
+
+      // Contenido según tipo
+      if(b.tipo==='grafico'){
+        blqInner.innerHTML = b.contenido||'';
+      } else if(b.tipo==='imagen'){
+        if(media&&media[b.id]){
+          var img=document.createElement('img'); img.src=media[b.id];
+          img.style.cssText='max-width:100%;border-radius:8px';
+          blqInner.appendChild(img);
+        }
+        if(b.contenido){ var cap=document.createElement('p'); cap.style.cssText='font-size:12px;color:var(--muted);margin-top:6px;font-style:italic'; cap.textContent=b.contenido; blqInner.appendChild(cap); }
+      } else if(b.tipo==='video'){
+        if(media&&media[b.id]){ var vid=document.createElement('video'); vid.src=media[b.id]; vid.controls=true; vid.style.cssText='max-width:100%;border-radius:8px'; blqInner.appendChild(vid); }
+      } else if(b.tipo==='youtube'){
+        var url=(b.contenido||'').trim();
+        var m=url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+        if(m){ var ifr=document.createElement('iframe'); ifr.src='https://www.youtube.com/embed/'+m[1]; ifr.style.cssText='width:100%;aspect-ratio:16/9;border:none;border-radius:8px'; ifr.allowFullscreen=true; blqInner.appendChild(ifr); }
+        else if(url){ blqInner.innerHTML='<a href="'+url+'" target="_blank" class="btn btn-g" style="font-size:13px">▶ Ver vídeo ↗</a>'; }
+      } else {
+        blqInner.style.whiteSpace='pre-wrap';
+        blqInner.textContent=b.contenido||'';
+      }
+
+      blqBody.appendChild(blqInner);
+      blqDiv.appendChild(blqHdr);
+      blqDiv.appendChild(blqBody);
+
+      // Toggle bloque nivel 2
+      blqHdr.addEventListener('click',function(){
+        blqDiv.classList.toggle('b-open');
+      });
+
+      epInner.appendChild(blqDiv);
+    });
+
+    epBody.appendChild(epInner);
+    epDiv.appendChild(trigger);
+    epDiv.appendChild(epBody);
+    container.appendChild(epDiv);
+    epAccordions.push(epDiv);
+
+    // Toggle epígrafe nivel 1
+    trigger.addEventListener('click',function(){
+      var isOpen = epDiv.classList.toggle('open');
+      trigger.setAttribute('aria-expanded', isOpen?'true':'false');
+      updateProgress();
+    });
+  });
+
+  // ── Botones de control ─────────────────────────────────
+  btnExp.addEventListener('click',function(){
+    epAccordions.forEach(function(a){
+      a.classList.add('open');
+      a.querySelector('.ep-trigger').setAttribute('aria-expanded','true');
+    });
+    updateProgress();
+  });
+  btnExpB.addEventListener('click',function(){
+    epAccordions.forEach(function(a){
+      a.classList.add('open');
+      a.querySelector('.ep-trigger').setAttribute('aria-expanded','true');
+      a.querySelectorAll('.blq-acc').forEach(function(b){ b.classList.add('b-open'); });
+    });
+    updateProgress();
+  });
+  btnCol.addEventListener('click',function(){
+    epAccordions.forEach(function(a){
+      a.classList.remove('open');
+      a.querySelector('.ep-trigger').setAttribute('aria-expanded','false');
+      a.querySelectorAll('.blq-acc').forEach(function(b){ b.classList.remove('b-open'); });
+    });
+    updateProgress();
+  });
 }
 
 // ── Editor de contenidos ──────────────────────────────
