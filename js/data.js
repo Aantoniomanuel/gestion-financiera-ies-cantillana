@@ -10827,6 +10827,40 @@ function abrirTemaEnContenido(temaTexto, udId){
 }
 
 
+// ── Tarjetas de concepto clave ────────────────────────
+var _CONCEPTO_PALETA=[
+  {bg:'#ede9fe',border:'#c4b5fd',term:'#5b21b6'},
+  {bg:'var(--blue-bg)',border:'#93c5fd',term:'var(--blue)'},
+  {bg:'var(--amber-bg)',border:'#fcd34d',term:'var(--amber)'},
+  {bg:'var(--green-bg)',border:'#86efac',term:'var(--green)'},
+  {bg:'rgba(26,39,68,.08)',border:'rgba(26,39,68,.16)',term:'var(--navy)'},
+];
+function _renderConceptCards(contenido){
+  var grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;padding:2px 0';
+  var entradas=(contenido||'').split('\n\n').filter(Boolean);
+  entradas.forEach(function(entry,i){
+    var colonIdx=entry.indexOf(': ');
+    var term=colonIdx>-1?entry.slice(0,colonIdx).trim():entry.trim();
+    var def=colonIdx>-1?entry.slice(colonIdx+2).trim():'';
+    var col=_CONCEPTO_PALETA[i%_CONCEPTO_PALETA.length];
+    var card=document.createElement('div');
+    card.style.cssText='background:'+col.bg+';border:1px solid '+col.border+';border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:5px';
+    var termEl=document.createElement('div');
+    termEl.style.cssText='font-weight:700;font-size:12.5px;color:'+col.term+';line-height:1.3';
+    termEl.textContent=term;
+    card.appendChild(termEl);
+    if(def){
+      var defEl=document.createElement('div');
+      defEl.style.cssText='font-size:12px;color:var(--text);line-height:1.55';
+      defEl.textContent=def;
+      card.appendChild(defEl);
+    }
+    grid.appendChild(card);
+  });
+  return grid;
+}
+
 // ── Render bloque en modo LECTURA ─────────────────────
 function renderBloqueLectura(bloque, media){
   var info = BLOQUE_INFO[bloque.tipo] || BLOQUE_INFO.texto;
@@ -10853,7 +10887,10 @@ function renderBloqueLectura(bloque, media){
       cap.textContent=bloque.titulo; body.appendChild(cap);
     }
     wrap.appendChild(body); return wrap;
-  } else if(bloque.tipo==='texto'||bloque.tipo==='concepto'||bloque.tipo==='actividad'){
+  } else if(bloque.tipo==='concepto'){
+    body.style.padding='10px';
+    body.appendChild(_renderConceptCards(bloque.contenido));
+  } else if(bloque.tipo==='texto'||bloque.tipo==='actividad'){
     body.style.cssText += ';font-size:13.5px;line-height:1.7;color:var(--text);white-space:pre-wrap';
     body.textContent = bloque.contenido||'';
   } else if(bloque.tipo==='imagen'){
@@ -11007,6 +11044,8 @@ function renderContenidosInteractivos(udId, container){
       // Contenido según tipo
       if(b.tipo==='grafico'){
         blqInner.innerHTML = b.contenido||'';
+      } else if(b.tipo==='concepto'){
+        blqInner.appendChild(_renderConceptCards(b.contenido));
       } else if(b.tipo==='imagen'){
         if(media&&media[b.id]){
           var img=document.createElement('img'); img.src=media[b.id];
