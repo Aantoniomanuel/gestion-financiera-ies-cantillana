@@ -314,6 +314,10 @@ if(!CONT_DATA['ud3'] || !CONT_DATA['ud3'].length){
      temaRef:'El contrato de seguro: marco legal y elementos esenciales',
      titulo:'Marco legal y naturaleza del contrato',
      contenido:'El contrato de seguro en España está regulado por la Ley 50/1980, de 8 de octubre, de Contrato de Seguro (vigente en 2025 con sus modificaciones). Según su artículo primero, el asegurador se obliga, mediante el cobro de una prima y para el caso de que se produzca el evento cuyo riesgo es objeto de cobertura, a indemnizar el daño producido al asegurado.\n\nEl contrato de seguro es consensual, bilateral, oneroso, aleatorio y de adhesión. Es de adhesión porque el tomador no negocia las cláusulas generales; simplemente acepta o rechaza las condiciones que le presenta la aseguradora.\n\nLa póliza es el documento que formaliza el contrato (art. 5 Ley 50/1980). Debe contener: identificación de las partes, objeto del seguro, naturaleza del riesgo, designación de los objetos o personas aseguradas, suma asegurada, importe de la prima y ámbito temporal y territorial.\n\nLas pólizas tienen tres tipos de condiciones: generales (comunes a todos los contratos del mismo ramo), particulares (específicas del contrato) y especiales (modificaciones pactadas individualmente).'},
+    {id:'blq_seg_201g',tipo:'grafico',publicado:false,
+     temaRef:'El contrato de seguro: marco legal y elementos esenciales',
+     titulo:'Composición de la prima comercial',
+     contenido:'<svg viewBox="0 0 720 160" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:10px;" aria-label="Componentes de la prima comercial"><rect width="720" height="160" rx="10" fill="#f8fafc"/><text x="360" y="22" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="700" fill="#1e293b">Composición de la prima comercial</text><rect x="20" y="35" width="680" height="36" rx="6" fill="#e2e8f0"/><rect x="20" y="35" width="200" height="36" rx="0" fill="#185fa5"/><rect x="20" y="35" width="6" height="36" rx="6" fill="#185fa5"/><rect x="220" y="35" width="130" height="36" fill="#0f6e56"/><rect x="350" y="35" width="180" height="36" fill="#854f0b"/><rect x="530" y="35" width="100" height="36" fill="#534ab7"/><rect x="624" y="35" width="76" height="36" rx="0" fill="#94a3b8"/><rect x="688" y="35" width="12" height="36" rx="6" fill="#94a3b8"/><text x="120" y="57" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="700" fill="white">Prima pura / de riesgo</text><text x="285" y="57" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="white">Rec. seguridad</text><text x="440" y="57" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" font-weight="700" fill="white">Gastos de gestin</text><text x="580" y="57" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="white">Beneficio</text><text x="661" y="57" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="600" fill="white">Fracc.</text><text x="360" y="92" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#1e293b">= PRIMA COMERCIAL (lo que paga el tomador)</text><rect x="20" y="108" width="12" height="12" rx="3" fill="#185fa5"/><text x="36" y="119" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Prima pura: cubre el coste estadistico del siniestro</text><rect x="290" y="108" width="12" height="12" rx="3" fill="#0f6e56"/><text x="306" y="119" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Rec. seguridad: margen ante desviaciones</text><rect x="20" y="130" width="12" height="12" rx="3" fill="#854f0b"/><text x="36" y="141" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Gastos gestion: costes operativos de la aseguradora</text><rect x="290" y="130" width="12" height="12" rx="3" fill="#534ab7"/><text x="306" y="141" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Beneficio industrial</text><rect x="480" y="130" width="12" height="12" rx="3" fill="#94a3b8"/><text x="496" y="141" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Recargo fraccionamiento (+1,5-3%)</text></svg>'},
     {id:'blq_seg_202',tipo:'texto',publicado:false,
      temaRef:'El contrato de seguro: marco legal y elementos esenciales',
      titulo:'La prima: componentes y fraccionamiento',
@@ -322,6 +326,10 @@ if(!CONT_DATA['ud3'] || !CONT_DATA['ud3'].length){
      temaRef:'El contrato de seguro: marco legal y elementos esenciales',
      titulo:'Sujetos y elementos del contrato de seguro',
      contenido:'Tomador del seguro: persona que suscribe el contrato y se obliga a pagar la prima. Puede coincidir o no con el asegurado.\n\nAsegurado: persona cuyo patrimonio, vida o integridad es objeto de cobertura. Quien recibe la indemnización en caso de siniestro.\n\nAsegurador: entidad autorizada por la DGSFP que asume el riesgo y se obliga a indemnizar (Mapfre, Allianz, AXA, Generali, Zurich...).\n\nBeneficiario: persona designada para recibir la prestación en seguros de personas. Puede no ser el asegurado.\n\nSuma asegurada: valor máximo que la aseguradora se compromete a pagar en caso de siniestro total. Debe coincidir con el valor real del bien.\n\nFranquicia: importe a cargo del asegurado en cada siniestro. A mayor franquicia pactada, menor es la prima.'},
+    {id:'blq_seg_203g',tipo:'grafico',publicado:false,
+     temaRef:'El contrato de seguro: marco legal y elementos esenciales',
+     titulo:'Esquema de las relaciones entre los sujetos del contrato de seguro',
+     contenido:'<svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:10px;background:#f8fafc;" aria-label="Esquema sujetos del contrato de seguro"><defs><marker id="ah-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#0f6e56"/></marker><marker id="ah-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#185fa5"/></marker><marker id="ah-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#854f0b"/></marker><marker id="ah-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#a32d2d"/></marker></defs><rect x="40" y="120" width="150" height="70" rx="12" fill="#e6f1fb" stroke="#185fa5" stroke-width="1.5"/><text x="115" y="149" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#185fa5">TOMADOR</text><text x="115" y="167" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" fill="#475569">Contrata y paga la prima</text><rect x="335" y="50" width="150" height="70" rx="12" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1.5"/><text x="410" y="79" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#0f6e56">ASEGURADOR</text><text x="410" y="97" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" fill="#475569">Cubre el riesgo</text><rect x="335" y="220" width="150" height="70" rx="12" fill="#e6f1fb" stroke="#185fa5" stroke-width="1.5"/><text x="410" y="249" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#185fa5">ASEGURADO</text><text x="410" y="267" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" fill="#475569">Patrimonio / persona cubierta</text><rect x="630" y="120" width="150" height="70" rx="12" fill="#faeeda" stroke="#854f0b" stroke-width="1.5"/><text x="705" y="149" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#854f0b">BENEFICIARIO</text><text x="705" y="167" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10.5" fill="#475569">Recibe la prestacion</text><ellipse cx="200" cy="265" rx="58" ry="28" fill="#fcebeb" stroke="#a32d2d" stroke-width="1.5" stroke-dasharray="4,3"/><text x="200" y="261" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#a32d2d">SINIESTRO</text><text x="200" y="276" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#a32d2d">Evento fortuito</text><path d="M190,140 Q280,60 335,75" stroke="#0f6e56" stroke-width="1.8" fill="none" marker-end="url(#ah-green)"/><rect x="222" y="70" width="90" height="20" rx="5" fill="white" opacity="0.92"/><text x="267" y="84" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#0f6e56" font-weight="600">Pago de prima</text><path d="M410,120 L410,220" stroke="#185fa5" stroke-width="1.8" fill="none" marker-end="url(#ah-blue)"/><rect x="418" y="164" width="88" height="18" rx="4" fill="white" opacity="0.92"/><text x="462" y="176" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#185fa5" font-weight="600">Cobertura</text><path d="M255,260 L335,262" stroke="#a32d2d" stroke-width="1.8" fill="none" stroke-dasharray="5,3" marker-end="url(#ah-red)"/><text x="294" y="253" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#a32d2d">afecta a</text><path d="M485,85 Q600,60 630,140" stroke="#854f0b" stroke-width="1.8" fill="none" marker-end="url(#ah-amber)"/><rect x="524" y="72" width="90" height="20" rx="5" fill="white" opacity="0.92"/><text x="569" y="86" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#854f0b" font-weight="600">Prestacion</text><path d="M485,255 Q580,310 630,180" stroke="#854f0b" stroke-width="1.4" fill="none" stroke-dasharray="4,3" marker-end="url(#ah-amber)"/><text x="574" y="296" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#854f0b">designa</text><rect x="40" y="300" width="740" height="32" rx="6" fill="#f1f5fb"/><line x1="60" y1="316" x2="90" y2="316" stroke="#0f6e56" stroke-width="2"/><text x="96" y="320" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Flujo economico</text><line x1="200" y1="316" x2="230" y2="316" stroke="#185fa5" stroke-width="2"/><text x="236" y="320" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Cobertura / proteccion</text><line x1="370" y1="316" x2="400" y2="316" stroke="#a32d2d" stroke-width="2" stroke-dasharray="4,3"/><text x="406" y="320" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Evento siniestral</text><line x1="510" y1="316" x2="540" y2="316" stroke="#854f0b" stroke-width="2" stroke-dasharray="4,3"/><text x="546" y="320" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Designacion beneficiario</text></svg>'},
     {id:'blq_seg_204',tipo:'texto',publicado:false,
      temaRef:'El contrato de seguro: marco legal y elementos esenciales',
      titulo:'El mediador de seguros: agente y corredor',
@@ -335,6 +343,10 @@ if(!CONT_DATA['ud3'] || !CONT_DATA['ud3'].length){
      temaRef:'Modalidades de seguros para la empresa: seguros de daños',
      titulo:'Conceptos clave: modalidades de seguros empresariales',
      contenido:'Multirriesgo de empresa: póliza que agrupa en un solo contrato las coberturas más habituales: incendio, robo, RC, agua, avería de maquinaria y pérdida de beneficios.\n\nRC General: cubre los daños involuntarios causados a terceros desde las instalaciones o por la actividad ordinaria de la empresa.\n\nSeguro de crédito: protege al vendedor frente al impago de sus clientes por insolvencia. La aseguradora investiga la solvencia del comprador e indemniza si no paga.\n\nLucro cesante: ingresos que la empresa deja de percibir por la paralización de su actividad a causa de un siniestro. Se cubre con el seguro de pérdida de beneficios.\n\nSeguro de caución: garantiza ante un tercero (Administración, arrendador) el cumplimiento de una obligación. Sustituye el depósito en metálico de la fianza o garantía.\n\nCiberseguro: cubre los daños derivados de ciberataques, robo de datos y fallos de seguridad informática.\n\nCCS: entidad pública que cubre daños extraordinarios (catástrofes naturales, terrorismo) no cubiertos por el seguro privado ordinario.'},
+    {id:'blq_seg_302g',tipo:'grafico',publicado:false,
+     temaRef:'Modalidades de seguros para la empresa: seguros de daños',
+     titulo:'Tabla comparativa de modalidades de seguros empresariales (Andalucía)',
+     contenido:'<svg viewBox="0 0 820 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:10px;" aria-label="Tabla comparativa modalidades de seguros empresariales"><rect width="820" height="420" rx="10" fill="#f8fafc"/><rect x="0" y="0" width="820" height="42" rx="0" fill="#1e293b"/><rect x="0" y="0" width="820" height="10" rx="6" fill="#1e293b"/><text x="16" y="26" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="white">MODALIDAD</text><text x="230" y="26" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="white">QUE CUBRE</text><text x="530" y="26" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="white">TIPICO EN ANDALUCIA</text><text x="728" y="26" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="white">PRIORIDAD</text><rect x="0" y="42" width="820" height="42" fill="#f0fdf8"/><text x="16" y="60" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#0f6e56">Multirriesgo empresa</text><text x="16" y="75" font-family="system-ui,sans-serif" font-size="10" fill="#475569">incendio + robo + RC + agua</text><text x="230" y="67" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Incendio, robo, RC general, averia maquinaria, perdida beneficios</text><text x="530" y="67" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Hoteles Sevilla, bodegas Jerez, almazaras Jaen</text><rect x="728" y="50" width="82" height="22" rx="11" fill="#fcebeb"/><text x="769" y="65" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#a32d2d">OBLIGATORIO</text><rect x="0" y="84" width="820" height="42" fill="white"/><text x="16" y="102" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#a32d2d">RC General</text><text x="16" y="117" font-family="system-ui,sans-serif" font-size="10" fill="#475569">responsabilidad civil</text><text x="230" y="109" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Danos involuntarios a terceros por la actividad de la empresa</text><text x="530" y="109" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Industria alimentaria, comercio, servicios profesionales</text><rect x="728" y="92" width="82" height="22" rx="11" fill="#fcebeb"/><text x="769" y="107" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#a32d2d">OBLIGATORIO*</text><rect x="0" y="126" width="820" height="42" fill="#f0fdf8"/><text x="16" y="144" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#534ab7">Seg. Accidentes</text><text x="16" y="159" font-family="system-ui,sans-serif" font-size="10" fill="#475569">trabajadores</text><text x="230" y="151" font-family="system-ui,sans-serif" font-size="10" fill="#475569">IT, incapacidad permanente y fallecimiento por accidente laboral/extralaboral</text><text x="530" y="151" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Cooperativas campo, hosteleria, construccion (segun convenio)</text><rect x="728" y="134" width="82" height="22" rx="11" fill="#fcebeb"/><text x="769" y="149" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#a32d2d">OBLIGATORIO*</text><rect x="0" y="168" width="820" height="42" fill="white"/><text x="16" y="186" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#854f0b">Transporte mercancias</text><text x="16" y="201" font-family="system-ui,sans-serif" font-size="10" fill="#475569">danos en transito</text><text x="230" y="193" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Danos a la mercancia durante transporte (terrestre, maritimo, aereo)</text><text x="530" y="193" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Dcoop, Oleoestepa, exportadoras olivareras y hortofruticolas</text><rect x="728" y="176" width="82" height="22" rx="11" fill="#e1f5ee"/><text x="769" y="191" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#0f6e56">MUY REC.</text><rect x="0" y="210" width="820" height="42" fill="#f0fdf8"/><text x="16" y="228" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#854f0b">Seguro de credito</text><text x="16" y="243" font-family="system-ui,sans-serif" font-size="10" fill="#475569">impago clientes</text><text x="230" y="235" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Impago de clientes por insolvencia o morosidad declarada</text><text x="530" y="235" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Distribuidoras, industria alimentaria con grandes clientes</text><rect x="728" y="218" width="82" height="22" rx="11" fill="#f1f5f9"/><text x="769" y="233" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#475569">OPCIONAL</text><rect x="0" y="252" width="820" height="42" fill="white"/><text x="16" y="270" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#534ab7">Perdida de beneficios</text><text x="16" y="285" font-family="system-ui,sans-serif" font-size="10" fill="#475569">lucro cesante</text><text x="230" y="277" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Ingresos perdidos por paralizacion de actividad tras un siniestro</text><text x="530" y="277" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Almazaras, bodegas, fabricas, hoteles</text><rect x="728" y="260" width="82" height="22" rx="11" fill="#e1f5ee"/><text x="769" y="275" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#0f6e56">MUY REC.</text><rect x="0" y="294" width="820" height="42" fill="#fafafa"/><rect x="0" y="294" width="5" height="42" fill="#534ab7"/><text x="16" y="312" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="#534ab7">Ciberseguro</text><text x="16" y="327" font-family="system-ui,sans-serif" font-size="10" fill="#475569">riesgos digitales</text><text x="230" y="319" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Ciberataques, ransomware, robo de datos, costes RGPD</text><text x="530" y="319" font-family="system-ui,sans-serif" font-size="10" fill="#475569">Cualquier empresa con datos de clientes o transacciones online</text><rect x="728" y="302" width="82" height="22" rx="11" fill="#eeedfe"/><text x="769" y="317" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#534ab7">EMERGENTE</text><rect x="0" y="336" width="820" height="2" fill="#e2e8f0"/><text x="10" y="356" font-family="system-ui,sans-serif" font-size="9" fill="#94a3b8">* Obligatorio segun convenio colectivo o normativa sectorial aplicable</text></svg>'},
     {id:'blq_seg_303',tipo:'texto',publicado:false,
      temaRef:'Modalidades de seguros para la empresa: seguros de daños',
      titulo:'Ejemplo real: Dcoop y el seguro de transporte de exportación',
@@ -370,6 +382,10 @@ if(!CONT_DATA['ud3'] || !CONT_DATA['ud3'].length){
      temaRef:'El siniestro: comunicación, tramitación y liquidación',
      titulo:'El siniestro: procedimiento y plazos legales',
      contenido:'El siniestro es la materialización del riesgo asegurado. Cuando ocurre, el asegurado debe actuar con rapidez para no perder su derecho a ser indemnizado.\n\nPlazo de comunicación: el art. 16 de la Ley 50/1980 establece que debe comunicarse el siniestro al asegurador en el plazo máximo de 7 días desde que se conoció (salvo que la póliza fije un plazo más amplio).\n\nProcedimiento de gestión del siniestro:\n1. Comunicación inmediata: notificación al teléfono de siniestros o portal online, adjuntando fotografías y descripción del evento.\n2. Apertura del expediente: la aseguradora asigna número de expediente y gestor interlocutor.\n3. Visita del perito: el asegurado puede designar el suyo propio si no está de acuerdo con la valoración.\n4. Valoración y acuerdo: si hay desacuerdo, puede recurrirse al tercer perito (art. 38) o al arbitraje.\n5. Pago de la indemnización: el art. 20.3 establece dos plazos de mora: (a) 40 días desde la declaración del siniestro para el importe mínimo no controvertido; (b) 3 meses desde el siniestro para la prestación completa. Intereses de demora: interés legal + 50%, mínimo del 20% anual a partir del segundo año.\n\nEn 2025, la tramitación se realiza íntegramente a través de portales web o apps de empresa. Para siniestros de menor importe (hasta 3.000–5.000 €), muchas aseguradoras aplican ya peritación remota mediante análisis de fotografías.'},
+    {id:'blq_seg_601g',tipo:'grafico',publicado:false,
+     temaRef:'El siniestro: comunicación, tramitación y liquidación',
+     titulo:'Proceso de tramitación del siniestro: actuaciones del asegurado y la aseguradora',
+     contenido:'<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:10px;" aria-label="Proceso tramitacion siniestro"><rect width="820" height="200" rx="10" fill="#f8fafc"/><rect x="0" y="0" width="90" height="200" rx="8" fill="#1e293b"/><text x="45" y="85" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="white" transform="rotate(-90,45,85)">ASEGURADO</text><text x="45" y="155" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="white" transform="rotate(-90,45,155)">ASEGURADORA</text><line x1="90" y1="100" x2="820" y2="100" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="6,4"/><rect x="90" y="0" width="730" height="100" fill="#f0f9ff"/><rect x="90" y="100" width="730" height="100" fill="#f0fdf8"/><rect x="100" y="10" width="90" height="40" rx="8" fill="#fcebeb" stroke="#a32d2d" stroke-width="1.5"/><text x="145" y="28" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#a32d2d">SINIESTRO</text><text x="145" y="43" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#7f1d1d">Evento ocurre</text><rect x="215" y="10" width="100" height="40" rx="8" fill="#e6f1fb" stroke="#185fa5" stroke-width="1.5"/><text x="265" y="28" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#185fa5">COMUNICAR</text><text x="265" y="43" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">max. 7 dias (art.16)</text><rect x="340" y="10" width="100" height="40" rx="8" fill="#e6f1fb" stroke="#185fa5" stroke-width="1.5"/><text x="390" y="28" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#185fa5">DOCUMENTAR</text><text x="390" y="43" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">fotos + declaracion</text><rect x="590" y="10" width="100" height="40" rx="8" fill="#faeeda" stroke="#854f0b" stroke-width="1.5"/><text x="640" y="28" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#854f0b">ACEPTAR/APELAR</text><text x="640" y="43" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">3er perito si desacuerdo</text><rect x="720" y="10" width="90" height="40" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1.5"/><text x="765" y="28" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#0f6e56">COBRAR</text><text x="765" y="43" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">indemnizacion</text><rect x="215" y="115" width="100" height="40" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1.5"/><text x="265" y="133" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#0f6e56">EXPEDIENTE</text><text x="265" y="148" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">num. + gestor</text><rect x="340" y="115" width="120" height="40" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1.5"/><text x="400" y="133" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#0f6e56">PERITACION</text><text x="400" y="148" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">40 dias desde declaracion</text><rect x="480" y="115" width="110" height="40" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1.5"/><text x="535" y="133" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#0f6e56">VALORACION</text><text x="535" y="148" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">propuesta indemniz.</text><rect x="610" y="115" width="100" height="40" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="1.5"/><text x="660" y="133" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700" fill="#0f6e56">PAGO</text><text x="660" y="148" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#475569">max. 3 meses (art.20.3)</text><line x1="190" y1="30" x2="215" y2="30" stroke="#475569" stroke-width="1.5" marker-end="url(#sw-arrow)"/><line x1="315" y1="30" x2="340" y2="30" stroke="#475569" stroke-width="1.5"/><line x1="265" y1="50" x2="265" y2="115" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/><line x1="390" y1="50" x2="400" y2="115" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/><line x1="460" y1="135" x2="480" y2="135" stroke="#475569" stroke-width="1.5"/><line x1="590" y1="135" x2="610" y2="135" stroke="#475569" stroke-width="1.5"/><line x1="640" y1="50" x2="660" y2="115" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/><line x1="710" y1="135" x2="765" y2="50" stroke="#0f6e56" stroke-width="1.5"/><text x="100" y="185" font-family="system-ui,sans-serif" font-size="9" fill="#94a3b8">Plazos legales: comunicacion max. 7 dias (art.16 LCS) · importe minimo no controvertido max. 40 dias · prestacion completa max. 3 meses (art.20.3 LCS)</text></svg>'},
     {id:'blq_seg_602',tipo:'texto',publicado:false,
      temaRef:'El siniestro: comunicación, tramitación y liquidación',
      titulo:'Ejemplo: empresa de logística de última milla (Dos Hermanas, Sevilla)',
@@ -396,6 +412,7 @@ var BLOQUE_INFO = {
   texto:     { ico:'📝', label:'Texto / Explicación',   color:'var(--blue-bg)',   ctxt:'var(--blue)' },
   concepto:  { ico:'💡', label:'Concepto clave',         color:'var(--amber-bg)', ctxt:'var(--amber)' },
   imagen:    { ico:'🖼️', label:'Imagen',                 color:'var(--green-bg)', ctxt:'var(--green)' },
+  grafico:   { ico:'📊', label:'Gráfico / Diagrama SVG', color:'var(--surface2)', ctxt:'var(--navy)' },
   video:     { ico:'🎬', label:'Vídeo (archivo)',         color:'#fdf2f8',         ctxt:'#9d174d' },
   youtube:   { ico:'▶️', label:'Vídeo YouTube/Vimeo',    color:'#fff1f2',         ctxt:'#be123c' },
   actividad: { ico:'✏️', label:'Actividad / Ejercicio',  color:'var(--surface2)', ctxt:'var(--muted)' },
@@ -10825,7 +10842,16 @@ function renderBloqueLectura(bloque, media){
   var body = document.createElement('div');
   body.style.cssText = 'padding:12px 14px';
 
-  if(bloque.tipo==='texto'||bloque.tipo==='concepto'||bloque.tipo==='actividad'){
+  if(bloque.tipo==='grafico'){
+    body.style.padding='10px';
+    body.innerHTML = bloque.contenido||'';
+    if(bloque.titulo){
+      var cap=document.createElement('p');
+      cap.style.cssText='font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;padding:0 4px';
+      cap.textContent=bloque.titulo; body.appendChild(cap);
+    }
+    wrap.appendChild(body); return wrap;
+  } else if(bloque.tipo==='texto'||bloque.tipo==='concepto'||bloque.tipo==='actividad'){
     body.style.cssText += ';font-size:13.5px;line-height:1.7;color:var(--text);white-space:pre-wrap';
     body.textContent = bloque.contenido||'';
   } else if(bloque.tipo==='imagen'){
@@ -10861,7 +10887,7 @@ function renderBloqueLectura(bloque, media){
   return wrap;
 }
 
-// ── Render contenidos en la UD — navegador de lecciones ──
+// ── Render contenidos en la UD — navegador de lecciones integrado ──
 function renderContenidosInteractivos(udId, container){
   var bloques = CONT_DATA[udId] || [];
   var media = getContMedia();
@@ -10891,77 +10917,89 @@ function renderContenidosInteractivos(udId, container){
       l.bloques.push(b);
     } else { sinTema.push(b); }
   });
-  // Bloques sin tema → lección extra al final
   if(sinTema.length) lecciones.push({tema:'Contenido general', bloques:sinTema});
   if(!lecciones.length) return;
 
-  var idx = 0; // lección actual
+  var idx = 0;
+  var total = lecciones.length;
 
-  // ── Construir el navegador ────────────────────────────
-  var nav = document.createElement('div');
-  nav.style.cssText = 'display:flex;flex-direction:column;gap:0';
+  // ── Barra de progreso de pasos ────────────────────────
+  var stepsBar = document.createElement('div');
+  stepsBar.style.cssText = 'margin-bottom:16px';
 
-  // Barra de progreso + selector de lecciones (pills)
-  var pillBar = document.createElement('div');
-  pillBar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px';
+  // Línea de progreso
+  var progressTrack = document.createElement('div');
+  progressTrack.style.cssText = 'height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;overflow:hidden';
+  var progressFill = document.createElement('div');
+  progressFill.style.cssText = 'height:100%;background:var(--gold);border-radius:2px;transition:width .3s ease';
+  progressTrack.appendChild(progressFill);
+  stepsBar.appendChild(progressTrack);
 
-  // Cabecera de la lección activa
-  var lecHdr = document.createElement('div');
-  lecHdr.style.cssText = 'background:var(--navy);border-radius:12px 12px 0 0;padding:16px 20px;display:flex;align-items:center;gap:14px';
+  // Chips de lecciones
+  var stepsRow = document.createElement('div');
+  stepsRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center';
+  stepsBar.appendChild(stepsRow);
 
-  // Cuerpo con los bloques de la lección
+  // ── Título de la lección activa ───────────────────────
+  var lecTitBar = document.createElement('div');
+  lecTitBar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px';
+
+  // ── Bloques de la lección ─────────────────────────────
   var lecBody = document.createElement('div');
-  lecBody.style.cssText = 'border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;padding:16px;min-height:120px';
 
-  // Pie de navegación
+  // ── Pie de navegación ─────────────────────────────────
   var lecNav = document.createElement('div');
-  lecNav.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px';
+  lecNav.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);gap:8px';
 
   var btnPrev = document.createElement('button');
-  btnPrev.className='btn btn-g';
-  btnPrev.style.cssText='display:flex;align-items:center;gap:6px;font-size:13px';
-  btnPrev.innerHTML='← Lección anterior';
+  btnPrev.className = 'btn btn-g btn-sm';
+  btnPrev.innerHTML = '← Anterior';
 
   var cuentaEl = document.createElement('div');
-  cuentaEl.style.cssText='font-size:12px;color:var(--muted);text-align:center;flex:1';
+  cuentaEl.style.cssText = 'flex:1;text-align:center;font-size:12px;color:var(--muted)';
 
   var btnNext = document.createElement('button');
-  btnNext.className='btn btn-p';
-  btnNext.style.cssText='display:flex;align-items:center;gap:6px;font-size:13px';
-  btnNext.innerHTML='Siguiente lección →';
+  btnNext.className = 'btn btn-p btn-sm';
+  btnNext.innerHTML = 'Siguiente →';
 
   lecNav.appendChild(btnPrev);
   lecNav.appendChild(cuentaEl);
   lecNav.appendChild(btnNext);
 
-  // ── Función de render de la lección activa ────────────
+  // ── Render de la lección activa ───────────────────────
   function mostrarLeccion(i){
     idx = i;
     var lec = lecciones[i];
-    var total = lecciones.length;
 
-    // Pills
-    pillBar.innerHTML='';
+    // Progreso
+    progressFill.style.width = Math.round(((i+1)/total)*100)+'%';
+
+    // Chips de lección (numerados)
+    stepsRow.innerHTML='';
     lecciones.forEach(function(l, li){
-      var pill=document.createElement('button');
+      var chip = document.createElement('button');
       var activo = li===i;
-      pill.style.cssText='padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid '+(activo?'var(--navy)':'var(--border)')+';background:'+(activo?'var(--navy)':'transparent')+';color:'+(activo?'#fff':'var(--muted)')+';transition:.15s';
-      pill.textContent=(li+1)+'. '+l.tema.slice(0,28)+(l.tema.length>28?'…':'');
-      pill.onclick=(function(ii){ return function(){ mostrarLeccion(ii); }; })(li);
-      pillBar.appendChild(pill);
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 3px;border-radius:99px;border:1.5px solid '+(activo?'var(--navy)':'var(--border-lt,rgba(0,0,0,.12))')+';background:'+(activo?'var(--navy)':'transparent')+';cursor:pointer;transition:.15s;font-size:11px;font-weight:600;color:'+(activo?'#fff':'var(--muted)');
+      chip.innerHTML = '<span style="width:18px;height:18px;border-radius:50%;background:'+(activo?'var(--gold)':'var(--border)')+';color:'+(activo?'var(--navy)':'var(--muted)')+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">'+(li+1)+'</span>'
+        +(activo?'<span style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+l.tema.slice(0,22)+(l.tema.length>22?'…':'')+'</span>':'');
+      chip.onclick=(function(ii){ return function(){ mostrarLeccion(ii); }; })(li);
+      stepsRow.appendChild(chip);
     });
 
-    // Cabecera
-    lecHdr.innerHTML='';
-    var numBadge=document.createElement('div');
-    numBadge.style.cssText='width:34px;height:34px;border-radius:8px;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0';
+    // Título de la lección
+    lecTitBar.innerHTML='';
+    var numBadge=document.createElement('span');
+    numBadge.style.cssText='width:26px;height:26px;border-radius:6px;background:var(--navy);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0';
     numBadge.textContent=i+1;
-    var titDiv=document.createElement('div'); titDiv.style.cssText='flex:1';
-    var titH=document.createElement('div'); titH.style.cssText='font-size:15px;font-weight:700;color:#fff'; titH.textContent=lec.tema;
-    var titSub=document.createElement('div'); titSub.style.cssText='font-size:11px;color:rgba(255,255,255,.5);margin-top:2px';
-    titSub.textContent=lec.bloques.length+' bloque'+(lec.bloques.length!==1?'s':'')+' · Lección '+(i+1)+' de '+total;
-    titDiv.appendChild(titH); titDiv.appendChild(titSub);
-    lecHdr.appendChild(numBadge); lecHdr.appendChild(titDiv);
+    var titEl=document.createElement('span');
+    titEl.style.cssText='font-size:14px;font-weight:700;color:var(--text);flex:1';
+    titEl.textContent=lec.tema;
+    var subEl=document.createElement('span');
+    subEl.style.cssText='font-size:11px;color:var(--muted);white-space:nowrap';
+    subEl.textContent=lec.bloques.length+' apartado'+(lec.bloques.length!==1?'s':'');
+    lecTitBar.appendChild(numBadge);
+    lecTitBar.appendChild(titEl);
+    lecTitBar.appendChild(subEl);
 
     // Bloques
     lecBody.innerHTML='';
@@ -10976,27 +11014,20 @@ function renderContenidosInteractivos(udId, container){
       lecBody.appendChild(bWrap);
     });
 
-    // Contador y botones
-    cuentaEl.innerHTML='<div style="font-weight:600;color:var(--navy)">'+(i+1)+' / '+total+'</div>'+
-      '<div style="font-size:11px;margin-top:1px">lección</div>';
-    btnPrev.disabled = i===0;
-    btnPrev.style.opacity = i===0?'0.35':'1';
-    btnNext.disabled = i===total-1;
-    btnNext.style.opacity = i===total-1?'0.35':'1';
-    btnNext.innerHTML = i===total-1 ? '✓ Completado' : 'Siguiente lección →';
-
-    // Scroll al inicio del contenido
-    container.scrollIntoView({behavior:'smooth', block:'nearest'});
+    // Pie
+    cuentaEl.textContent=(i+1)+' de '+total;
+    btnPrev.disabled = i===0; btnPrev.style.opacity=i===0?'0.35':'1';
+    btnNext.disabled = i===total-1; btnNext.style.opacity=i===total-1?'0.35':'1';
+    btnNext.innerHTML = i===total-1 ? '✓ Completado' : 'Siguiente →';
   }
 
   btnPrev.onclick = function(){ if(idx>0) mostrarLeccion(idx-1); };
   btnNext.onclick = function(){ if(idx<lecciones.length-1) mostrarLeccion(idx+1); };
 
-  nav.appendChild(pillBar);
-  nav.appendChild(lecHdr);
-  nav.appendChild(lecBody);
-  nav.appendChild(lecNav);
-  container.appendChild(nav);
+  container.appendChild(stepsBar);
+  container.appendChild(lecTitBar);
+  container.appendChild(lecBody);
+  container.appendChild(lecNav);
 
   mostrarLeccion(0);
 }
