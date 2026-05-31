@@ -11251,20 +11251,41 @@ function renderContenidosInteractivos(udId, container){
       var secBody=document.createElement('div'); secBody.className='ep-body';
       var secInner=document.createElement('div'); secInner.className='ep-inner';
 
-      // Cada temaRef → blq-acc con cabecera destacada + bloques individuales dentro
+      // Cada temaRef → contenedor con estilos inline (NO usa blq-acc para evitar
+      // conflictos CSS descendentes con los blq-acc de los bloques individuales internos)
       grSec.forEach(function(g){
         var tc={}; g.bloques.forEach(function(b){tc[b.tipo]=(tc[b.tipo]||0)+1;});
         var metaG=Object.keys(tc).map(function(t){return (BLOQUE_INFO[t]||BLOQUE_INFO.texto).ico+' '+tc[t];}).join(' ');
-        var grDiv=document.createElement('div'); grDiv.className='blq-acc'; grDiv.style.marginBottom='8px';
-        var grHdr=document.createElement('div'); grHdr.className='blq-hdr';
-        grHdr.style.cssText='background:rgba(26,39,68,.07)';
+
+        var grDiv=document.createElement('div');
+        grDiv.style.cssText='border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:8px';
+
+        var grHdr=document.createElement('div');
+        grHdr.style.cssText='display:flex;align-items:center;gap:8px;padding:9px 14px;background:rgba(26,39,68,.07);cursor:pointer;user-select:none;transition:background .15s';
+        var grChvSvg='<svg id="gchv" style="width:16px;height:16px;flex-shrink:0;transition:transform .25s cubic-bezier(.4,0,.2,1)" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         grHdr.innerHTML='<span style="font-size:12.5px;font-weight:700;color:var(--navy);flex:1">'+g.tema+'</span>'
-          +'<span style="font-size:11px;color:var(--muted);flex-shrink:0">'+metaG+'</span>'+chvBSVG;
-        var grBody=document.createElement('div'); grBody.className='blq-body';
-        var grInner=document.createElement('div'); grInner.className='blq-inner';
+          +'<span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-right:6px">'+metaG+'</span>'+grChvSvg;
+
+        var grBody=document.createElement('div');
+        grBody.style.cssText='display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s cubic-bezier(.4,0,.2,1);overflow:hidden';
+
+        var grInner=document.createElement('div');
+        grInner.style.cssText='overflow:hidden;min-height:0;padding:0';
+
         g.bloques.forEach(function(b){ grInner.appendChild(_renderBloq(b)); });
-        grBody.appendChild(grInner); grDiv.appendChild(grHdr); grDiv.appendChild(grBody);
-        grHdr.addEventListener('click',function(){ grDiv.classList.toggle('b-open'); });
+        grBody.appendChild(grInner);
+        grDiv.appendChild(grHdr);
+        grDiv.appendChild(grBody);
+
+        var grOpen=false;
+        var grChv=grHdr.querySelector('svg');
+        grHdr.addEventListener('click',function(){
+          grOpen=!grOpen;
+          grBody.style.gridTemplateRows=grOpen?'1fr':'0fr';
+          grInner.style.padding=grOpen?'8px':'0';
+          grChv.style.transform=grOpen?'rotate(180deg)':'';
+          grHdr.style.background=grOpen?'rgba(26,39,68,.11)':'rgba(26,39,68,.07)';
+        });
         secInner.appendChild(grDiv);
       });
       sinTemaSec.forEach(function(b){ secInner.appendChild(_renderBloq(b)); });
