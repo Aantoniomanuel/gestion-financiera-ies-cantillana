@@ -331,15 +331,15 @@ function saveCont(){ localStorage.setItem(CONT_KEY, JSON.stringify(CONT_DATA)); 
 //   PARTE I: b2-3-productos-financieros-v2.html (epígrafes 1-6)
 //   PARTE II: matematicas-financieras-b2-3.html  (epígrafes 1-5)
 if(!CONT_DATA['ud2'] || !CONT_DATA['ud2'].length ||
-   !CONT_DATA['ud2'].find(function(b){ return b.id==='blq_pf_001'; })){
+   !CONT_DATA['ud2'].find(function(b){ return b.id==='blq_pf_001'&&b.tipo==='separador'; })){
   CONT_DATA['ud2'] = [
     // ═══════════════════════════════════════════════════════════
     // PARTE I · PRODUCTOS FINANCIEROS Y GESTIÓN BANCARIA
     // Fuente: b2-3-productos-financieros-v2.html
     // ═══════════════════════════════════════════════════════════
-    {id:'blq_pf_001',tipo:'texto',publicado:false,
+    {id:'blq_pf_001',tipo:'separador',publicado:false,
      temaRef:'📦 Parte I · Productos financieros y gestión bancaria',
-     titulo:'Presentación: Parte I — Productos Financieros y Gestión Bancaria',
+     titulo:'📦 Parte I · Productos financieros y gestión bancaria',
      contenido:'Esta parte cubre los instrumentos de financiación empresarial disponibles en la banca española y su aplicación práctica en el día a día del departamento de administración de una empresa andaluza.\n\nEpígrafes:\n1. El sistema financiero español y la financiación empresarial\n2. Financiación a corto plazo: póliza, descuento, factoring, confirming\n3. Financiación a largo plazo: préstamo, leasing, renting y garantías\n4. Comparativa y selección del instrumento financiero\n5. La TAE: herramienta de comparación\n6. La relación empresa-banco: negociación y gestión\n\nFuente: b2-3-productos-financieros-v2.html'},
 
     // ── EP1: Sistema financiero ──────────────────────────────
@@ -410,9 +410,9 @@ if(!CONT_DATA['ud2'] || !CONT_DATA['ud2'].length ||
     // PARTE II · MATEMÁTICAS FINANCIERAS
     // Fuente: matematicas-financieras-b2-3.html
     // ═══════════════════════════════════════════════════════════
-    {id:'blq_mf_001',tipo:'texto',publicado:false,
+    {id:'blq_mf_001',tipo:'separador',publicado:false,
      temaRef:'📐 Parte II · Matemáticas financieras',
-     titulo:'Presentación: Parte II — Matemáticas Financieras',
+     titulo:'📐 Parte II · Matemáticas financieras',
      contenido:'Esta parte cubre las herramientas matemáticas que subyacen a todos los cálculos financieros del módulo: desde el interés simple hasta las rentas y los sistemas de amortización de préstamos.\n\nEpígrafes:\n1. La operación financiera: elementos y equivalencia\n2. Ley de capitalización simple: interés simple y descuento\n3. Capitalización compuesta, fraccionamiento, TIN y TAE\n4. Rentas financieras: clasificación y valoración\n5. Préstamos: sistemas de amortización\n\nFuente: matematicas-financieras-b2-3.html'},
 
     // ── MF EP1: La operación financiera ───────────────────────
@@ -11141,175 +11141,139 @@ function renderContenidosInteractivos(udId, container){
     return;
   }
 
-  // Agrupar por temaRef
-  var grupos=[]; var sinTema=[];
-  bloquesVisibles.forEach(function(b){
-    if(b.temaRef){
-      var g=grupos.find(function(x){ return x.tema===b.temaRef; });
-      if(!g){ g={tema:b.temaRef,bloques:[]}; grupos.push(g); }
-      g.bloques.push(b);
-    } else { sinTema.push(b); }
-  });
-  if(sinTema.length) grupos.push({tema:'Contenido general',bloques:sinTema});
-  if(!grupos.length) return;
+  var chvSVG='<svg class="ep-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+  var chvBSVG='<svg class="blq-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
 
-  var total = grupos.length;
-  var chvSVG = '<svg class="ep-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
-  var chvBSVG = '<svg class="blq-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
-
-  // ── Controles ──────────────────────────────────────────
-  var controls = document.createElement('div');
-  controls.className = 'ep-controls';
-
-  var btnExp = document.createElement('button'); btnExp.className='ctrl-btn'; btnExp.textContent='Expandir todo';
-  var btnExpB = document.createElement('button'); btnExpB.className='ctrl-btn'; btnExpB.textContent='Expandir con bloques';
-  var btnCol = document.createElement('button'); btnCol.className='ctrl-btn'; btnCol.textContent='Colapsar todo';
-
-  var progWrap = document.createElement('div'); progWrap.className='ep-prog-wrap';
-  var progLbl = document.createElement('div'); progLbl.className='ep-prog-lbl';
-  var progLblTxt = document.createElement('span'); progLblTxt.textContent='Progreso de lectura';
-  var progLblNum = document.createElement('span'); progLblNum.textContent='0 / '+total+' secciones';
-  progLbl.appendChild(progLblTxt); progLbl.appendChild(progLblNum);
-  var progBar = document.createElement('div'); progBar.className='ep-prog-bar';
-  var progFill = document.createElement('div'); progFill.className='ep-prog-fill';
-  progBar.appendChild(progFill); progWrap.appendChild(progLbl); progWrap.appendChild(progBar);
-
-  controls.appendChild(btnExp); controls.appendChild(btnExpB); controls.appendChild(btnCol); controls.appendChild(progWrap);
-  container.appendChild(controls);
-
-  // Función de actualización del progreso
-  var epAccordions = [];
-  function updateProgress(){
-    var open = epAccordions.filter(function(a){ return a.classList.contains('open'); }).length;
-    progLblNum.textContent = open+' / '+total+' secciones';
-    progFill.style.width = Math.round((open/total)*100)+'%';
+  // ── Helper: renderiza un bloque individual como blq-acc ──
+  function _renderBloq(b){
+    var bInfo=BLOQUE_INFO[b.tipo]||BLOQUE_INFO.texto;
+    var blqDiv=document.createElement('div'); blqDiv.className='blq-acc';
+    var blqHdr=document.createElement('div'); blqHdr.className='blq-hdr';
+    blqHdr.innerHTML='<span class="btype bt-'+b.tipo+'">'+bInfo.ico+' '+bInfo.label+'</span>'
+      +(b.titulo?'<span style="font-size:12px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+b.titulo+'</span>':'')
+      +(ROL==='profesor'&&!b.publicado?'<span class="blq-draft">⚠️ Borrador</span>':'')+chvBSVG;
+    var blqBody=document.createElement('div'); blqBody.className='blq-body';
+    var blqInner=document.createElement('div'); blqInner.className='blq-inner';
+    if(b.tipo==='grafico'){ blqInner.innerHTML=b.contenido||''; }
+    else if(b.tipo==='concepto'){ blqInner.appendChild(_renderConceptCards(b.contenido)); }
+    else if(b.tipo==='imagen'){
+      if(media&&media[b.id]){ var img=document.createElement('img'); img.src=media[b.id]; img.style.cssText='max-width:100%;border-radius:8px'; blqInner.appendChild(img); }
+      if(b.contenido){ var cap=document.createElement('p'); cap.style.cssText='font-size:12px;color:var(--muted);margin-top:6px;font-style:italic'; cap.textContent=b.contenido; blqInner.appendChild(cap); }
+    } else if(b.tipo==='video'){
+      if(media&&media[b.id]){ var vid=document.createElement('video'); vid.src=media[b.id]; vid.controls=true; vid.style.cssText='max-width:100%;border-radius:8px'; blqInner.appendChild(vid); }
+    } else if(b.tipo==='youtube'){
+      var url2=(b.contenido||'').trim(); var m2=url2.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+      if(m2){ var ifr=document.createElement('iframe'); ifr.src='https://www.youtube.com/embed/'+m2[1]; ifr.style.cssText='width:100%;aspect-ratio:16/9;border:none;border-radius:8px'; ifr.allowFullscreen=true; blqInner.appendChild(ifr); }
+      else if(url2){ blqInner.innerHTML='<a href="'+url2+'" target="_blank" class="btn btn-g" style="font-size:13px">▶ Ver vídeo ↗</a>'; }
+    } else { blqInner.style.whiteSpace='pre-wrap'; blqInner.textContent=b.contenido||''; }
+    blqBody.appendChild(blqInner); blqDiv.appendChild(blqHdr); blqDiv.appendChild(blqBody);
+    blqHdr.addEventListener('click',function(){ blqDiv.classList.toggle('b-open'); });
+    return blqDiv;
   }
 
-  // ── Acordeones de nivel 1 (epígrafes) ────────────────
-  grupos.forEach(function(g, gi){
-    var info = BLOQUE_INFO.texto;
+  // ── Helper: construye controles + barra de progreso ──────
+  function _buildControls(labelTotal, accs, getAcc){
+    var ctrl=document.createElement('div'); ctrl.className='ep-controls';
+    var bExp=document.createElement('button'); bExp.className='ctrl-btn'; bExp.textContent='Expandir todo';
+    var bExpB=document.createElement('button'); bExpB.className='ctrl-btn'; bExpB.textContent='Expandir con bloques';
+    var bCol=document.createElement('button'); bCol.className='ctrl-btn'; bCol.textContent='Colapsar todo';
+    var pw=document.createElement('div'); pw.className='ep-prog-wrap';
+    var pl=document.createElement('div'); pl.className='ep-prog-lbl';
+    var plt=document.createElement('span'); plt.textContent='Progreso de lectura';
+    var pln=document.createElement('span'); pln.textContent='0 / '+labelTotal;
+    pl.appendChild(plt); pl.appendChild(pln);
+    var pb=document.createElement('div'); pb.className='ep-prog-bar';
+    var pf=document.createElement('div'); pf.className='ep-prog-fill';
+    pb.appendChild(pf); pw.appendChild(pl); pw.appendChild(pb);
+    ctrl.appendChild(bExp); ctrl.appendChild(bExpB); ctrl.appendChild(bCol); ctrl.appendChild(pw);
+    function upd(){ var o=accs.filter(function(a){return a.classList.contains('open');}).length; pln.textContent=o+' / '+labelTotal; pf.style.width=Math.round((o/accs.length)*100)+'%'; }
+    bExp.addEventListener('click',function(){ accs.forEach(function(a){ a.classList.add('open'); a.querySelector('.ep-trigger').setAttribute('aria-expanded','true'); }); upd(); });
+    bExpB.addEventListener('click',function(){ accs.forEach(function(a){ a.classList.add('open'); a.querySelector('.ep-trigger').setAttribute('aria-expanded','true'); a.querySelectorAll('.blq-acc').forEach(function(b){ b.classList.add('b-open'); }); }); upd(); });
+    bCol.addEventListener('click',function(){ accs.forEach(function(a){ a.classList.remove('open'); a.querySelector('.ep-trigger').setAttribute('aria-expanded','false'); a.querySelectorAll('.blq-acc').forEach(function(b){ b.classList.remove('b-open'); }); }); upd(); });
+    return { el:ctrl, upd:upd };
+  }
 
-    // ── Meta del epígrafe: contar tipos de bloques ──────
-    var tiposCnt = {};
-    g.bloques.forEach(function(b){ tiposCnt[b.tipo]=(tiposCnt[b.tipo]||0)+1; });
-    var metaStr = g.bloques.length+' bloque'+(g.bloques.length!==1?'s':'')+' · '
-      +Object.keys(tiposCnt).map(function(t){ return (BLOQUE_INFO[t]||info).ico+' '+tiposCnt[t]; }).join(' ');
+  // ── Detección: ¿hay separadores de sección? ──────────────
+  var tieneSep=bloquesVisibles.some(function(b){ return b.tipo==='separador'; });
 
-    var epDiv = document.createElement('div');
-    epDiv.className = 'ep-acc';
-    epDiv.id = 'ep-acc-'+udId+'-'+gi;
+  if(!tieneSep){
+    // ── MODO SIMPLE: un ep-acc por temaRef ──────────────
+    var grupos=[]; var sinTema=[];
+    bloquesVisibles.forEach(function(b){
+      if(b.temaRef){ var g=grupos.find(function(x){return x.tema===b.temaRef;}); if(!g){g={tema:b.temaRef,bloques:[]};grupos.push(g);} g.bloques.push(b); }
+      else { sinTema.push(b); }
+    });
+    if(sinTema.length) grupos.push({tema:'Contenido general',bloques:sinTema});
+    if(!grupos.length) return;
+    var epAccs=[];
+    var ctrlS=_buildControls(grupos.length+' secciones',epAccs);
+    container.appendChild(ctrlS.el);
+    grupos.forEach(function(g,gi){
+      var tc={}; g.bloques.forEach(function(b){tc[b.tipo]=(tc[b.tipo]||0)+1;});
+      var meta=g.bloques.length+' bloque'+(g.bloques.length!==1?'s':'')+' · '+Object.keys(tc).map(function(t){return (BLOQUE_INFO[t]||BLOQUE_INFO.texto).ico+' '+tc[t];}).join(' ');
+      var epDiv=document.createElement('div'); epDiv.className='ep-acc'; epDiv.id='ep-acc-'+udId+'-'+gi;
+      var trig=document.createElement('button'); trig.type='button'; trig.className='ep-trigger'; trig.setAttribute('aria-expanded','false');
+      trig.innerHTML='<span class="ep-num">'+(gi+1)+'</span><span class="ep-label-wrap"><span class="ep-title">'+g.tema+'</span><span class="ep-meta">'+meta+'</span></span>'+chvSVG;
+      var epBody=document.createElement('div'); epBody.className='ep-body';
+      var epInner=document.createElement('div'); epInner.className='ep-inner';
+      g.bloques.forEach(function(b){ epInner.appendChild(_renderBloq(b)); });
+      epBody.appendChild(epInner); epDiv.appendChild(trig); epDiv.appendChild(epBody);
+      container.appendChild(epDiv); epAccs.push(epDiv);
+      trig.addEventListener('click',function(){ var o=epDiv.classList.toggle('open'); trig.setAttribute('aria-expanded',o?'true':'false'); ctrlS.upd(); });
+    });
 
-    // Trigger
-    var trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.className = 'ep-trigger';
-    trigger.setAttribute('aria-expanded','false');
-    trigger.innerHTML =
-      '<span class="ep-num">'+(gi+1)+'</span>'+
-      '<span class="ep-label-wrap">'+
-        '<span class="ep-title">'+g.tema+'</span>'+
-        '<span class="ep-meta">'+metaStr+'</span>'+
-      '</span>'+chvSVG;
+  } else {
+    // ── MODO DOS NIVELES: secciones (separador) → temaRefs → bloques ──
+    var secciones=[]; var secAct=null;
+    bloquesVisibles.forEach(function(b){
+      if(b.tipo==='separador'){ secAct={titulo:b.titulo,bloques:[]}; secciones.push(secAct); }
+      else if(secAct){ secAct.bloques.push(b); }
+    });
+    if(!secciones.length){ container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted)">Sin contenido disponible.</div>'; return; }
 
-    // Body
-    var epBody = document.createElement('div');
-    epBody.className = 'ep-body';
-    var epInner = document.createElement('div');
-    epInner.className = 'ep-inner';
+    var secAccs=[];
+    var ctrlD=_buildControls(secciones.length+' partes',secAccs);
+    container.appendChild(ctrlD.el);
 
-    // ── Bloques de nivel 2 ────────────────────────────
-    g.bloques.forEach(function(b){
-      var bInfo = BLOQUE_INFO[b.tipo] || BLOQUE_INFO.texto;
-      var blqDiv = document.createElement('div');
-      blqDiv.className = 'blq-acc';
-
-      var blqHdr = document.createElement('div');
-      blqHdr.className = 'blq-hdr';
-      blqHdr.innerHTML =
-        '<span class="btype bt-'+b.tipo+'">'+bInfo.ico+' '+bInfo.label+'</span>'+
-        (b.titulo?'<span style="font-size:12px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+b.titulo+'</span>':'')+
-        (ROL==='profesor'&&!b.publicado?'<span class="blq-draft">⚠️ Borrador</span>':'')+
-        chvBSVG;
-
-      var blqBody = document.createElement('div');
-      blqBody.className = 'blq-body';
-      var blqInner = document.createElement('div');
-      blqInner.className = 'blq-inner';
-
-      // Contenido según tipo
-      if(b.tipo==='grafico'){
-        blqInner.innerHTML = b.contenido||'';
-      } else if(b.tipo==='concepto'){
-        blqInner.appendChild(_renderConceptCards(b.contenido));
-      } else if(b.tipo==='imagen'){
-        if(media&&media[b.id]){
-          var img=document.createElement('img'); img.src=media[b.id];
-          img.style.cssText='max-width:100%;border-radius:8px';
-          blqInner.appendChild(img);
-        }
-        if(b.contenido){ var cap=document.createElement('p'); cap.style.cssText='font-size:12px;color:var(--muted);margin-top:6px;font-style:italic'; cap.textContent=b.contenido; blqInner.appendChild(cap); }
-      } else if(b.tipo==='video'){
-        if(media&&media[b.id]){ var vid=document.createElement('video'); vid.src=media[b.id]; vid.controls=true; vid.style.cssText='max-width:100%;border-radius:8px'; blqInner.appendChild(vid); }
-      } else if(b.tipo==='youtube'){
-        var url=(b.contenido||'').trim();
-        var m=url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
-        if(m){ var ifr=document.createElement('iframe'); ifr.src='https://www.youtube.com/embed/'+m[1]; ifr.style.cssText='width:100%;aspect-ratio:16/9;border:none;border-radius:8px'; ifr.allowFullscreen=true; blqInner.appendChild(ifr); }
-        else if(url){ blqInner.innerHTML='<a href="'+url+'" target="_blank" class="btn btn-g" style="font-size:13px">▶ Ver vídeo ↗</a>'; }
-      } else {
-        blqInner.style.whiteSpace='pre-wrap';
-        blqInner.textContent=b.contenido||'';
-      }
-
-      blqBody.appendChild(blqInner);
-      blqDiv.appendChild(blqHdr);
-      blqDiv.appendChild(blqBody);
-
-      // Toggle bloque nivel 2
-      blqHdr.addEventListener('click',function(){
-        blqDiv.classList.toggle('b-open');
+    secciones.forEach(function(sec,si){
+      // Agrupar bloques de la sección por temaRef
+      var grSec=[]; var sinTemaSec=[];
+      sec.bloques.forEach(function(b){
+        if(b.temaRef&&b.temaRef!==sec.titulo){ var g=grSec.find(function(x){return x.tema===b.temaRef;}); if(!g){g={tema:b.temaRef,bloques:[]};grSec.push(g);} g.bloques.push(b); }
+        else { sinTemaSec.push(b); }
       });
 
-      epInner.appendChild(blqDiv);
-    });
+      var secDiv=document.createElement('div'); secDiv.className='ep-acc'; secDiv.id='sec-acc-'+udId+'-'+si;
+      var trig=document.createElement('button'); trig.type='button'; trig.className='ep-trigger'; trig.setAttribute('aria-expanded','false');
+      trig.innerHTML='<span class="ep-num">'+(si+1)+'</span>'
+        +'<span class="ep-label-wrap"><span class="ep-title">'+sec.titulo+'</span>'
+        +'<span class="ep-meta">'+grSec.length+' epígrafes · '+sec.bloques.length+' bloques de contenido</span></span>'+chvSVG;
+      var secBody=document.createElement('div'); secBody.className='ep-body';
+      var secInner=document.createElement('div'); secInner.className='ep-inner';
 
-    epBody.appendChild(epInner);
-    epDiv.appendChild(trigger);
-    epDiv.appendChild(epBody);
-    container.appendChild(epDiv);
-    epAccordions.push(epDiv);
+      // Cada temaRef → blq-acc con cabecera destacada + bloques individuales dentro
+      grSec.forEach(function(g){
+        var tc={}; g.bloques.forEach(function(b){tc[b.tipo]=(tc[b.tipo]||0)+1;});
+        var metaG=Object.keys(tc).map(function(t){return (BLOQUE_INFO[t]||BLOQUE_INFO.texto).ico+' '+tc[t];}).join(' ');
+        var grDiv=document.createElement('div'); grDiv.className='blq-acc'; grDiv.style.marginBottom='8px';
+        var grHdr=document.createElement('div'); grHdr.className='blq-hdr';
+        grHdr.style.cssText='background:rgba(26,39,68,.07)';
+        grHdr.innerHTML='<span style="font-size:12.5px;font-weight:700;color:var(--navy);flex:1">'+g.tema+'</span>'
+          +'<span style="font-size:11px;color:var(--muted);flex-shrink:0">'+metaG+'</span>'+chvBSVG;
+        var grBody=document.createElement('div'); grBody.className='blq-body';
+        var grInner=document.createElement('div'); grInner.className='blq-inner';
+        g.bloques.forEach(function(b){ grInner.appendChild(_renderBloq(b)); });
+        grBody.appendChild(grInner); grDiv.appendChild(grHdr); grDiv.appendChild(grBody);
+        grHdr.addEventListener('click',function(){ grDiv.classList.toggle('b-open'); });
+        secInner.appendChild(grDiv);
+      });
+      sinTemaSec.forEach(function(b){ secInner.appendChild(_renderBloq(b)); });
 
-    // Toggle epígrafe nivel 1
-    trigger.addEventListener('click',function(){
-      var isOpen = epDiv.classList.toggle('open');
-      trigger.setAttribute('aria-expanded', isOpen?'true':'false');
-      updateProgress();
+      secBody.appendChild(secInner); secDiv.appendChild(trig); secDiv.appendChild(secBody);
+      container.appendChild(secDiv); secAccs.push(secDiv);
+      trig.addEventListener('click',function(){ var o=secDiv.classList.toggle('open'); trig.setAttribute('aria-expanded',o?'true':'false'); ctrlD.upd(); });
     });
-  });
-
-  // ── Botones de control ─────────────────────────────────
-  btnExp.addEventListener('click',function(){
-    epAccordions.forEach(function(a){
-      a.classList.add('open');
-      a.querySelector('.ep-trigger').setAttribute('aria-expanded','true');
-    });
-    updateProgress();
-  });
-  btnExpB.addEventListener('click',function(){
-    epAccordions.forEach(function(a){
-      a.classList.add('open');
-      a.querySelector('.ep-trigger').setAttribute('aria-expanded','true');
-      a.querySelectorAll('.blq-acc').forEach(function(b){ b.classList.add('b-open'); });
-    });
-    updateProgress();
-  });
-  btnCol.addEventListener('click',function(){
-    epAccordions.forEach(function(a){
-      a.classList.remove('open');
-      a.querySelector('.ep-trigger').setAttribute('aria-expanded','false');
-      a.querySelectorAll('.blq-acc').forEach(function(b){ b.classList.remove('b-open'); });
-    });
-    updateProgress();
-  });
+  }
 }
 
 // ── Editor de contenidos ──────────────────────────────
