@@ -4,7 +4,7 @@
     {
       "name": "gestion-financiera",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8788", "--directory", "C:\\Users\\anton\\gestion-financiera-ies-cantillana"],
+      "runtimeArgs": ["-m", "http.server", "8788", "--bind", "0.0.0.0", "--directory", "C:\\Users\\anton\\gestion-financiera-ies-cantillana"],
       "port": 8788
     }
   ]
