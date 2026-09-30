@@ -174,7 +174,7 @@ var UNIDADES = (function(){
 })();
 
 // ── RA y CE oficiales (RD 1584/2011 + Orden Andalucía 11/03/2013) ─
-var RA_CE_DATA = (function(){ var saved=JSON.parse(localStorage.getItem('gf_ra_ce')||'null'); /* Si saved tiene RA5 en ud5 (dato corrompido) forzar reset */ if(saved && saved.ud5 && saved.ud5.ra && saved.ud5.ra[0] && saved.ud5.ra[0].id==='RA5'){ localStorage.removeItem('gf_ra_ce'); saved=null; } return saved || {
+var RA_CE_DATA = (function(){ var saved=JSON.parse(localStorage.getItem('gf_ra_ce')||'null'); return saved || {
   ud1: {
     ra: [
       { id:'RA1', nombre:'RA1 — Caracteriza las necesidades de financiación de la empresa, identificando las fuentes disponibles y sus características',
@@ -2333,78 +2333,63 @@ function ponderacionAutomaticaCE(raId){
   flash('CE de '+raId+' ponderados automáticamente','#16a34a');
 }
 
-// ── EXPORT EXCEL ──────────────────────────────────────
-function exportarRACEExcel(){
-  if(typeof XLSX === 'undefined'){ flash('Librería Excel no cargada aún, espera unos segundos','#dc2626'); return; }
-  initPond();
-  var allRA = getAllRA();
-  var wsData = [
-    ['UD','UD_Titulo','RA_ID','RA_Nombre','RA_%_Modulo','CE_ID','CE_Descripcion','CE_%_RA'],
-    ['','','','','','','',''],
-    ['== INSTRUCCIONES ==','','','','','','',''],
-    ['• La suma de todos los RA_%_Modulo debe ser 100','','','','','','',''],
-    ['• La suma de CE_%_RA dentro de cada RA debe ser 100','','','','','','',''],
-    ['• No modificar las columnas UD, RA_ID, CE_ID','','','','','','',''],
-    ['','','','','','','',''],
-  ];
+// ── EXCEL RA/CE: formato común para exportar, plantilla e importar ──
+// Columnas (se localizan por nombre de cabecera, el orden no importa):
+//   UD · RA_ID · RA_Descripcion · RA_Ponderacion · CE_ID · CE_Descripcion · CE_Peso
+var RACE_XLS_COLS = ['UD','RA_ID','RA_Descripcion','RA_Ponderacion','CE_ID','CE_Descripcion','CE_Peso'];
 
-  allRA.forEach(function(item){
+function _raceFilasActuales(){
+  initPond();
+  var filas = [RACE_XLS_COLS.slice()];
+  getAllRA().forEach(function(item){
     var pond = POND[item.ra.id] || {pct:0,ce:{}};
     var ceList = item.ra.ce || [];
+    var ud = 'UD'+item.ud.n;
     if(!ceList.length){
-      wsData.push([
-        'UD'+item.ud.n, item.ud.titulo,
-        item.ra.id, item.ra.nombre, pond.pct,
-        '','',''
-      ]);
+      filas.push([ud, item.ra.id, item.ra.nombre, pond.pct||0, '', '', '']);
     } else {
       ceList.forEach(function(ce,i){
-        wsData.push([
-          'UD'+item.ud.n, item.ud.titulo,
-          item.ra.id, item.ra.nombre, i===0 ? pond.pct : '',
+        filas.push([
+          ud, item.ra.id, i===0 ? item.ra.nombre : '', i===0 ? (pond.pct||0) : '',
           ce.id, ce.desc, (pond.ce||{})[ce.id]||0
         ]);
       });
     }
   });
+  return filas;
+}
 
+function _raceLibro(filas, nombreFichero){
   var wb = XLSX.utils.book_new();
-  var ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Estilos de ancho de columna
-  ws['!cols'] = [
-    {wch:6},{wch:28},{wch:8},{wch:40},{wch:14},{wch:8},{wch:50},{wch:12}
-  ];
-
+  var ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [{wch:6},{wch:8},{wch:50},{wch:15},{wch:8},{wch:60},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws, 'RA y CE');
-  XLSX.writeFile(wb, 'RA_CE_GestionFinanciera.xlsx');
+  var inst = XLSX.utils.aoa_to_sheet([
+    ['INSTRUCCIONES'],
+    ['• UD: unidad a la que pertenece el RA (UD1, UD2…). Si se deja vacía se mantiene la unidad actual del RA.'],
+    ['• RA_Descripcion y RA_Ponderacion basta con ponerlos en la primera fila de cada RA.'],
+    ['• RA_Ponderacion: % del RA sobre el módulo. La suma de todos los RA debe ser 100.'],
+    ['• CE_Peso: % del CE dentro de su RA. La suma de los CE de cada RA debe ser 100.'],
+    ['• Se admiten decimales con coma o punto, y celdas con formato porcentaje.'],
+    ['• Si las columnas de porcentaje se dejan vacías, se conservan los porcentajes actuales.']
+  ]);
+  inst['!cols'] = [{wch:100}];
+  XLSX.utils.book_append_sheet(wb, inst, 'Instrucciones');
+  XLSX.writeFile(wb, nombreFichero);
+}
+
+// ── EXPORT EXCEL ──────────────────────────────────────
+function exportarRACEExcel(){
+  if(typeof XLSX === 'undefined'){ flash('Librería Excel no cargada aún, espera unos segundos','#dc2626'); return; }
+  _raceLibro(_raceFilasActuales(), 'RA_CE_GestionFinanciera.xlsx');
   flash('Excel exportado correctamente','#16a34a');
 }
 
 // ── PLANTILLA EXCEL ───────────────────────────────────
+// La plantilla sale rellena con la configuración actual: se edita y se vuelve a importar.
 function descargarPlantillaExcel(){
   if(typeof XLSX === 'undefined'){ flash('Librería Excel no cargada aún, espera unos segundos','#dc2626'); return; }
-
-  var wsData = [
-    // Cabecera — 4 columnas simples
-    ['RA_ID', 'RA_Descripcion', 'CE_ID', 'CE_Descripcion'],
-    // Fila de ejemplo RA1
-    ['RA1', 'Identifica la estructura y función del patrimonio empresarial', 'CE1.1', 'Identifica los elementos patrimoniales clasificándolos en activo, pasivo y neto patrimonial'],
-    ['RA1', '',                                                              'CE1.2', 'Elabora inventarios ordenados y completos de los elementos patrimoniales'],
-    ['RA1', '',                                                              'CE1.3', 'Formula la ecuación fundamental del patrimonio verificando su equilibrio'],
-    ['RA1', '',                                                              'CE1.4', 'Construye el balance de situación a partir de los datos del inventario'],
-    // Fila de ejemplo RA2
-    ['RA2', 'Aplica el Plan General de Contabilidad en el registro de operaciones', 'CE2.1', 'Identifica la estructura y contenido del PGC 2007'],
-    ['RA2', '', 'CE2.2', 'Clasifica las cuentas del PGC según sus grupos y subgrupos'],
-    ['RA2', '', 'CE2.3', 'Aplica los principios contables en el registro de operaciones'],
-    ['RA2', '', 'CE2.4', 'Utiliza el cuadro de cuentas para codificar operaciones económicas'],
-  ];
-
-  var wb = XLSX.utils.book_new();
-  var ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:8}, {wch:55}, {wch:8}, {wch:65}];
-  XLSX.utils.book_append_sheet(wb, ws, 'RA y CE');
-  XLSX.writeFile(wb, 'Plantilla_RA_CE.xlsx');
+  _raceLibro(_raceFilasActuales(), 'Plantilla_RA_CE.xlsx');
   flash('Plantilla descargada — rellena y vuelve a importar','#16a34a');
 }
 
@@ -2426,65 +2411,108 @@ function importarRACEExcel(file, sec){
   intentar(6);
 }
 
+// Convierte '15', '15%', '12,5', 0.15 (celda en formato %) … a número; '' → null
+function _raceNum(v, esPorcentajeExcel){
+  if(v === '' || v === null || v === undefined) return null;
+  var n = typeof v === 'number' ? v : parseFloat(String(v).replace('%','').replace(',','.').trim());
+  if(isNaN(n)) return null;
+  return esPorcentajeExcel ? n*100 : n;
+}
+
+// Normaliza 'ud3', 'UD 3', '3', 'UD3 · Seguros' → id de unidad existente, o null
+function _raceUdId(v){
+  var s = String(v||'').trim();
+  if(!s) return null;
+  var porId = UNIDADES.find(function(u){ return String(u.id).toLowerCase() === s.toLowerCase(); });
+  if(porId) return porId.id;
+  var m = s.match(/(\d+)/);
+  if(!m) return null;
+  var porNum = UNIDADES.find(function(u){ return u.n === parseInt(m[1]); });
+  return porNum ? porNum.id : null;
+}
+
 function procesarExcel(file, sec){
   var reader = new FileReader();
   reader.onload = function(e){
     try{
       var wb   = XLSX.read(e.target.result, {type:'array'});
       var ws   = wb.Sheets[wb.SheetNames[0]];
-      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
 
-      // Localizar fila de cabecera buscando RA_ID
+      // Localizar la cabecera: la fila que contenga una celda RA_ID
+      var norm = function(s){ return String(s||'').trim().toUpperCase().replace(/[\s%_]+/g,''); };
       var headerRow = -1;
-      for(var i = 0; i < Math.min(rows.length, 10); i++){
-        var first = String(rows[i][0]||'').trim().toUpperCase();
-        if(first === 'RA_ID' || first === 'RA'){
-          headerRow = i; break;
-        }
+      for(var i = 0; i < Math.min(rows.length, 15); i++){
+        if(rows[i].some(function(c){ var k = norm(c); return k === 'RAID' || k === 'RA'; })){ headerRow = i; break; }
       }
       if(headerRow < 0){
         flash('No se encontró la cabecera RA_ID. Usa la plantilla proporcionada.','#dc2626');
         return;
       }
 
-      // Filtrar filas de datos (ignorar vacías y la cabecera)
-      var dataRows = rows.slice(headerRow + 1).filter(function(r){
-        return String(r[0]||'').trim() !== '' || String(r[2]||'').trim() !== '';
+      // Mapear columnas por nombre (admite la plantilla antigua de 4 columnas,
+      // la de 6 columnas con ponderaciones y el formato de exportación)
+      var alias = {
+        ud:    ['UD','UNIDAD'],
+        raId:  ['RAID','RA'],
+        raNom: ['RADESCRIPCION','RANOMBRE'],
+        raPct: ['RAPONDERACION','RAMODULO','RAPCT','RAPESO'],
+        ceId:  ['CEID','CE'],
+        ceDes: ['CEDESCRIPCION','CENOMBRE'],
+        cePct: ['CEPESO','CERA','CEPONDERACION','CEPCT']
+      };
+      var hdr = rows[headerRow].map(norm);
+      var col = {};
+      Object.keys(alias).forEach(function(k){
+        col[k] = hdr.findIndex(function(h){ return alias[k].indexOf(h) >= 0; });
       });
-
-      if(!dataRows.length){
-        flash('El archivo no contiene datos de RA/CE.','#dc2626');
+      if(col.raId < 0 || col.ceId < 0){
+        flash('Faltan las columnas RA_ID o CE_ID en el archivo.','#dc2626');
         return;
       }
 
-      // Construir estructura RA → CE
-      // La plantilla NO tiene unidad — asignamos todos los RA al primer UD
-      // y luego el profesor los vincula desde Contenidos
-      var raMap   = {};   // raId → { nombre, ceList }
-      var raOrder = [];   // mantener orden de aparición
+      // Detectar celdas con formato porcentaje de Excel (0,15 = 15 %)
+      var esPct = function(r, c){
+        if(c < 0) return false;
+        var cell = ws[XLSX.utils.encode_cell({r:r, c:c})];
+        return !!(cell && cell.t === 'n' && /%/.test(cell.z||''));
+      };
+      var get = function(row, c){ return c >= 0 ? row[c] : ''; };
 
-      dataRows.forEach(function(row){
-        var raId   = String(row[0]||'').trim();
-        var raNom  = String(row[1]||'').trim();
-        var ceId   = String(row[2]||'').trim();
-        var ceDesc = String(row[3]||'').trim();
+      var raMap   = {};   // raId → { nombre, udId, pct, ce:[{id,desc,peso}] }
+      var raOrder = [];
+      var ultimoRA = null;
+      var ignoradas = 0;
 
-        if(!raId && !ceId) return; // fila completamente vacía
-
-        // Si el raId está vacío en esta fila, hereda el último raId conocido
-        if(!raId){
-          raId = raOrder.length ? raOrder[raOrder.length-1] : 'RA?';
-        }
+      rows.forEach(function(row, idx){
+        if(idx <= headerRow) return;
+        var raId  = String(get(row, col.raId)||'').trim();
+        var ceId  = String(get(row, col.ceId)||'').trim();
+        if(!raId && !ceId) return;                              // fila vacía
+        if(raId && !/^RA\s*\d+/i.test(raId)){ ignoradas++; return; } // instrucciones u otras notas
+        if(!raId) raId = ultimoRA;                               // hereda el RA de la fila anterior
+        if(!raId){ ignoradas++; return; }
+        raId = raId.replace(/\s+/g,'').toUpperCase();
+        ultimoRA = raId;
 
         if(!raMap[raId]){
-          raMap[raId]   = { nombre: raNom || raId, ce: [] };
+          raMap[raId] = { nombre:'', udId:null, pct:null, ce:[] };
           raOrder.push(raId);
-        } else if(raNom){
-          raMap[raId].nombre = raNom; // actualizar si hay descripción más adelante
         }
+        var ra = raMap[raId];
+        var raNom = String(get(row, col.raNom)||'').trim();
+        if(raNom) ra.nombre = raNom;
+        var udId = _raceUdId(get(row, col.ud));
+        if(udId) ra.udId = udId;
+        var pct = _raceNum(get(row, col.raPct), esPct(idx, col.raPct));
+        if(pct !== null) ra.pct = pct;
 
         if(ceId){
-          raMap[raId].ce.push({ id: ceId, desc: ceDesc || ceId, peso: 0 });
+          ra.ce.push({
+            id: ceId,
+            desc: String(get(row, col.ceDes)||'').trim() || ceId,
+            peso: _raceNum(get(row, col.cePct), esPct(idx, col.cePct))
+          });
         }
       });
 
@@ -2493,51 +2521,69 @@ function procesarExcel(file, sec){
         return;
       }
 
-      // Resumen antes de confirmar
+      // Unidad de cada RA: la del Excel; si no viene, la que ya tenía; si es nuevo, la primera
+      initPond();
+      var udActual = {};
+      UNIDADES.forEach(function(u){
+        (RA_CE_DATA[u.id]||{ra:[]}).ra.forEach(function(r){ if(!udActual[r.id]) udActual[r.id] = u.id; });
+      });
+      var raPrevio = {};
+      getAllRA().forEach(function(item){ raPrevio[item.ra.id] = item.ra; });
+
+      raOrder.forEach(function(raId){
+        var ra = raMap[raId];
+        ra.udId = ra.udId || udActual[raId] || (UNIDADES[0] && UNIDADES[0].id) || 'ud1';
+        if(!ra.nombre) ra.nombre = (raPrevio[raId] && raPrevio[raId].nombre) || raId;
+        // Porcentajes vacíos → se conservan los actuales
+        var pondPrev = POND[raId] || {pct:0, ce:{}};
+        if(ra.pct === null) ra.pct = pondPrev.pct || 0;
+        ra.ce.forEach(function(ce){
+          if(ce.peso === null) ce.peso = (pondPrev.ce||{})[ce.id] || 0;
+        });
+      });
+
+      // Resumen con comprobación de sumas
+      var r1 = function(n){ return Math.round(n*100)/100; };
+      var totalCE = 0, sumaRA = 0, avisos = [];
       var resumen = 'Resumen de la importación:\n\n';
       raOrder.forEach(function(raId){
-        resumen += '• '+raId+': '+raMap[raId].nombre+'\n';
-        resumen += '  '+raMap[raId].ce.length+' criterios de evaluación\n';
+        var ra = raMap[raId];
+        var ud = UNIDADES.find(function(u){ return u.id === ra.udId; });
+        var sumaCE = ra.ce.reduce(function(s,c){ return s + c.peso; }, 0);
+        totalCE += ra.ce.length; sumaRA += ra.pct;
+        resumen += '• '+raId+' → '+(ud ? 'UD'+ud.n : ra.udId)+' · '+r1(ra.pct)+'% · '+ra.ce.length+' CE (suman '+r1(sumaCE)+'%)\n';
+        if(ra.ce.length && Math.abs(sumaCE - 100) > 0.01) avisos.push('Los CE de '+raId+' suman '+r1(sumaCE)+'%, no 100%');
       });
-      resumen += '\nTotal: '+raOrder.length+' RA y '+raOrder.reduce(function(s,id){ return s+raMap[id].ce.length; },0)+' CE\n\n';
-      resumen += 'NOTA: Las ponderaciones se establecerán desde la web una vez importados.\n\n';
-      resumen += '¿Importar y reemplazar la configuración actual de RA/CE?';
+      if(Math.abs(sumaRA - 100) > 0.01) avisos.push('Los RA suman '+r1(sumaRA)+'%, no 100%');
+      resumen += '\nTotal: '+raOrder.length+' RA y '+totalCE+' CE';
+      if(ignoradas) resumen += '\n('+ignoradas+' filas ignoradas por no tener un RA válido)';
+      if(avisos.length) resumen += '\n\n⚠ Revisa después:\n  - '+avisos.join('\n  - ');
+      resumen += '\n\n¿Importar y reemplazar la configuración actual de RA/CE?';
 
       if(!confirm(resumen)) return;
 
-      // Distribuir RA a las unidades:
-      // Asignamos cada RA a la unidad cuyo número coincida con el sufijo numérico del RA
-      // (RA1 → UD1, RA2 → UD2...). Si no hay match, van a un UD "general" (ud1 como fallback).
-      var newRACE = {};
+      // Reconstruir RA_CE_DATA: las unidades quedan solo con los RA importados
+      UNIDADES.forEach(function(u){
+        RA_CE_DATA[u.id] = Object.assign({}, RA_CE_DATA[u.id]||{}, {ra:[]});
+      });
       var newPOND = {};
-
       raOrder.forEach(function(raId){
-        var numMatch = raId.match(/(\d+)/);
-        var udNum    = numMatch ? parseInt(numMatch[1]) : 1;
-        var udObj    = UNIDADES.find(function(u){ return u.n === udNum; }) || UNIDADES[0];
-        var udId     = udObj ? udObj.id : 'ud1';
-
-        if(!newRACE[udId]) newRACE[udId] = {ra:[]};
-
-        var raObj = {
+        var ra = raMap[raId];
+        if(!RA_CE_DATA[ra.udId]) RA_CE_DATA[ra.udId] = {ra:[]};
+        RA_CE_DATA[ra.udId].ra.push({
           id: raId,
-          nombre: raMap[raId].nombre,
-          ponderacion: 0,
-          ce: raMap[raId].ce.map(function(ce){ return { id:ce.id, desc:ce.desc, peso:0 }; })
-        };
-        newRACE[udId].ra.push(raObj);
-
-        // Ponderaciones a 0 — el profesor las fija desde la web
-        newPOND[raId] = { pct: 0, ce: {} };
-        raMap[raId].ce.forEach(function(ce){ newPOND[raId].ce[ce.id] = 0; });
+          nombre: ra.nombre,
+          ponderacion: ra.pct,
+          ce: ra.ce.map(function(ce){ return { id:ce.id, desc:ce.desc, peso:ce.peso }; })
+        });
+        newPOND[raId] = { pct: ra.pct, ce: {} };
+        ra.ce.forEach(function(ce){ newPOND[raId].ce[ce.id] = ce.peso; });
       });
 
-      // Aplicar
-      Object.assign(RA_CE_DATA, newRACE);
       POND = newPOND;
       saveRACE(); savePond();
       renderSeccionRACE(sec);
-      flash('✓ Importados '+raOrder.length+' RA y '+raOrder.reduce(function(s,id){ return s+raMap[id].ce.length; },0)+' CE — ahora establece las ponderaciones','#16a34a');
+      flash('✓ Importados '+raOrder.length+' RA y '+totalCE+' CE con sus ponderaciones'+(avisos.length ? ' — revisa las sumas' : ''), avisos.length ? '#d97706' : '#16a34a');
 
     } catch(err){
       flash('Error al leer el archivo: '+err.message,'#dc2626');
