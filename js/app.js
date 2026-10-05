@@ -215,7 +215,13 @@ function actualizarUIConPerfil(perfil){
       if(uAvatar&&perfil.avatar_url&&!uAvatar.querySelector('img'))
         uAvatar.innerHTML='<img src="'+perfil.avatar_url+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
       if(perfil.rol==='docente'){
-        setTimeout(function(){ if(window.cargarConfigProfesor) cargarConfigProfesor(); }, 800);
+        setTimeout(function(){
+          if(window.cargarConfigProfesor) cargarConfigProfesor();
+          // Mantener al día la copia que lee el alumnado
+          syncProfesorConfig('gf_cont_publico', contenidoPublico());
+        }, 800);
+      } else {
+        cargarContenidoAlumno();
       }
       // Add logout button
       var sf=document.querySelector('.s-footer');
@@ -1945,6 +1951,60 @@ async function cargarConfigProfesor(){
   } catch(e){ console.warn('[cargarConfigProfesor]', e); }
 }
 
+// ── CONTENIDO PUBLICADO → ALUMNADO ────────────────────────────────
+// El alumnado no puede leer gf_cont_data (incluye borradores). El docente sube
+// además 'gf_cont_publico': los bloques en borrador van vacíos (solo id/tipo,
+// para que data.js no los regenere con el contenido por defecto).
+// RLS: los alumnos solo pueden leer las claves de CLAVES_ALUMNO.
+var CLAVES_ALUMNO = {
+  gf_unidades: 'gf_unidades',
+  gf_bloques_estructura: 'gf_bloques_estructura',
+  gf_glosario: 'gf_glosario',
+  gf_cont_publico: 'gf_cont_data'
+};
+
+function contenidoPublico(){
+  var out = {};
+  Object.keys(CONT_DATA).forEach(function(udId){
+    out[udId] = (CONT_DATA[udId]||[]).map(function(b){
+      return b.publicado ? b : { id:b.id, tipo:b.tipo, publicado:false };
+    });
+  });
+  return out;
+}
+
+function _huella(str){
+  var h = 0;
+  for(var i = 0; i < str.length; i++){ h = ((h<<5) - h + str.charCodeAt(i)) | 0; }
+  return String(h);
+}
+
+// Alumno: descarga el contenido publicado por el docente y recarga una vez si ha cambiado
+async function cargarContenidoAlumno(){
+  if(!USUARIO_ACTUAL || USUARIO_ACTUAL.rol !== 'alumno') return;
+  try{
+    var {data, error} = await supa.from('profesor_config')
+      .select('clave,valor').in('clave', Object.keys(CLAVES_ALUMNO));
+    if(error){ console.warn('[Contenido alumno]', error.message); return; }
+    if(!data || !data.length) return;
+
+    var cambios = false, todo = '';
+    data.forEach(function(r){
+      var k = CLAVES_ALUMNO[r.clave];
+      var v = JSON.stringify(r.valor);
+      todo += r.clave + v;
+      if(localStorage.getItem(k) !== v){ localStorage.setItem(k, v); cambios = true; }
+    });
+    if(!cambios) return;
+
+    // data.js lee estas claves al cargar: recargar una sola vez por versión del contenido
+    var huella = _huella(todo);
+    if(sessionStorage.getItem('gf_cont_sync') === huella) return;
+    sessionStorage.setItem('gf_cont_sync', huella);
+    location.reload();
+  } catch(e){ console.warn('[cargarContenidoAlumno]', e); }
+}
+
 // Wrappear las funciones save para que tambien sincronicen en Supabase
 (function(){
   var orig = {
@@ -1958,7 +2018,7 @@ async function cargarConfigProfesor(){
   saveActEval  = function(){ orig.saveActEval();  syncProfesorConfig('gf_act_eval', ACT_EVAL); };
   saveActAprend= function(){ orig.saveActAprend();syncProfesorConfig('gf_act_aprend', ACT_APRENDIZAJE); };
   saveGlosario = function(){ orig.saveGlosario(); syncProfesorConfig('gf_glosario', GLOSARIO_DATA); };
-  saveCont     = function(){ orig.saveCont();     syncProfesorConfig('gf_cont_data', CONT_DATA); };
+  saveCont     = function(){ orig.saveCont();     syncProfesorConfig('gf_cont_data', CONT_DATA); syncProfesorConfig('gf_cont_publico', contenidoPublico()); };
   saveBloques  = function(b){ orig.saveBloques(b); syncProfesorConfig('gf_bloques_estructura', b); };
   saveBanco    = function(arr){ orig.saveBanco(arr); syncProfesorConfig('gf_banco_preguntas', arr); };
 })();
