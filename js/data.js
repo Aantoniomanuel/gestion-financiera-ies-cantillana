@@ -8906,11 +8906,17 @@ function renderActEvalBlock(u, colRight){
       btnDel.style.fontSize='11px'; btnDel.textContent='✕ Eliminar';
       btnDel.onclick=(function(aeid,uid){ return function(){
         if(!confirm('¿Eliminar esta actividad evaluable?')) return;
-        supa.from('act_eval').delete().eq('id',aeid).then(function(r){
-          if(r.error){ flash('Error al eliminar: '+r.error.message,'#dc2626'); return; }
-          _gfActEval=_gfActEval.filter(function(x){ return x.id!==aeid; });
-          renderUD(UNIDADES.find(function(x){ return x.id===uid; }));
+        // La lista del bloque sale de ACT_EVAL (ids locales tipo 'ae1_1'): se borra ahí
+        ACT_EVAL[uid]=(ACT_EVAL[uid]||[]).filter(function(x){ return x.id!==aeid; });
+        saveActEval();
+        _gfActEval=_gfActEval.filter(function(x){ return x.id!==aeid && x.local_id!==aeid; });
+        // Copia en la tabla act_eval (si se migró): por UUID o por su id local
+        var esUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(aeid);
+        supa.from('act_eval').delete().eq(esUuid?'id':'local_id', aeid).then(function(r){
+          if(r.error) console.warn('[Eliminar act_eval]', r.error.message);
         });
+        flash('Actividad eliminada','#16a34a');
+        renderUD(UNIDADES.find(function(x){ return x.id===uid; }));
       }; })(ae.id, u.id);
       btnRow.appendChild(btnDel);
 
