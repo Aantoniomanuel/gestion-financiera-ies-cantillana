@@ -215,11 +215,7 @@ function actualizarUIConPerfil(perfil){
       if(uAvatar&&perfil.avatar_url&&!uAvatar.querySelector('img'))
         uAvatar.innerHTML='<img src="'+perfil.avatar_url+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
       if(perfil.rol==='docente'){
-        setTimeout(function(){
-          if(window.cargarConfigProfesor) cargarConfigProfesor();
-          // Mantener al día la copia que lee el alumnado
-          syncProfesorConfig('gf_cont_publico', contenidoPublico());
-        }, 800);
+        setTimeout(function(){ if(window.cargarConfigProfesor) cargarConfigProfesor(); }, 800);
       } else {
         cargarContenidoAlumno();
       }
@@ -1909,45 +1905,48 @@ function syncProfesorConfig(clave, valor){
   }, 1500);
 }
 
+// Claves de la configuración del docente que se guardan en la nube
+var CLAVES_PROFESOR = [
+  'gf_unidades','gf_ra_ce','gf_ponderaciones','gf_act_eval','gf_act_aprend',
+  'gf_glosario','gf_cont_data','gf_bloques_estructura','gf_banco_preguntas'
+];
+
+// Docente: la nube manda. Si este navegador tiene datos distintos (p. ej. otro
+// ordenador con datos antiguos) se sustituyen y se recarga una vez; lo que solo
+// existe en local se sube. data.js lee estas claves al cargar, por eso se recarga.
 async function cargarConfigProfesor(){
   if(!USUARIO_ACTUAL || USUARIO_ACTUAL.rol !== 'docente') return;
   try{
     var {data, error} = await supa.from('profesor_config')
       .select('clave,valor').eq('docente_id', USUARIO_ACTUAL.id);
-    if(error || !data || !data.length) return;
+    if(error){ console.warn('[cargarConfigProfesor]', error.message); return; }
 
     var claveMap = {};
-    data.forEach(function(r){ claveMap[r.clave] = r.valor; });
+    (data||[]).forEach(function(r){ claveMap[r.clave] = r.valor; });
 
-    var restaurados = [];
-    var claves = [
-      ['gf_unidades','UNIDADES restaurado'],
-      ['gf_ra_ce','RA/CE restaurado'],
-      ['gf_act_eval','Actividades evaluables'],
-      ['gf_act_aprend','Actividades aprendizaje'],
-      ['gf_glosario','Glosario'],
-      ['gf_cont_data','Contenidos'],
-      ['gf_bloques_estructura','Estructura bloques'],
-      ['gf_banco_preguntas','Banco preguntas']
-    ];
-    claves.forEach(function(par){
-      var k = par[0], lbl = par[1];
-      if(!localStorage.getItem(k) && claveMap[k]){
-        localStorage.setItem(k, JSON.stringify(claveMap[k]));
-        restaurados.push(lbl);
+    var cambios = false, todo = '';
+    CLAVES_PROFESOR.forEach(function(k){
+      var local = localStorage.getItem(k);
+      if(claveMap[k] !== undefined && claveMap[k] !== null){
+        var v = JSON.stringify(claveMap[k]);
+        todo += k + v;
+        if(local !== v){ localStorage.setItem(k, v); cambios = true; }
+      } else if(local){
+        try{ syncProfesorConfig(k, JSON.parse(local)); }catch(e){}
       }
     });
 
-    if(restaurados.length){
-      try{ UNIDADES = JSON.parse(localStorage.getItem('gf_unidades')||'null') || UNIDADES; }catch(e){}
-      try{ RA_CE_DATA = JSON.parse(localStorage.getItem('gf_ra_ce')||'null') || RA_CE_DATA; }catch(e){}
-      try{ ACT_EVAL = JSON.parse(localStorage.getItem('gf_act_eval')||'null') || ACT_EVAL; }catch(e){}
-      try{ ACT_APRENDIZAJE = JSON.parse(localStorage.getItem('gf_act_aprend')||'null') || ACT_APRENDIZAJE; }catch(e){}
-      try{ GLOSARIO_DATA = JSON.parse(localStorage.getItem('gf_glosario')||'null') || GLOSARIO_DATA; }catch(e){}
-      try{ CONT_DATA = JSON.parse(localStorage.getItem('gf_cont_data')||'{}'); }catch(e){}
-      flash('\u2601\ufe0f Contenido restaurado desde la nube (' + restaurados.length + ' secciones)', '#16a34a');
-      renderDashboard();
+    if(cambios){
+      var huella = _huella(todo);
+      if(sessionStorage.getItem('gf_cfg_sync') !== huella){
+        sessionStorage.setItem('gf_cfg_sync', huella);
+        flash('☁️ Actualizando con tu contenido de la nube…', '#16a34a');
+        setTimeout(function(){ location.reload(); }, 600);
+        return;
+      }
     }
+    // Contenido al día: mantener la copia que lee el alumnado
+    syncProfesorConfig('gf_cont_publico', contenidoPublico());
   } catch(e){ console.warn('[cargarConfigProfesor]', e); }
 }
 
@@ -2011,7 +2010,7 @@ async function cargarContenidoAlumno(){
     saveUNIDADES: saveUNIDADES, saveRACE: saveRACE,
     saveActEval: saveActEval, saveActAprend: saveActAprend,
     saveGlosario: saveGlosario, saveCont: saveCont,
-    saveBloques: saveBloques, saveBanco: saveBanco
+    saveBloques: saveBloques, saveBanco: saveBanco, savePond: savePond
   };
   saveUNIDADES = function(){ orig.saveUNIDADES(); syncProfesorConfig('gf_unidades', UNIDADES); };
   saveRACE     = function(){ orig.saveRACE();     syncProfesorConfig('gf_ra_ce', RA_CE_DATA); };
@@ -2021,6 +2020,7 @@ async function cargarContenidoAlumno(){
   saveCont     = function(){ orig.saveCont();     syncProfesorConfig('gf_cont_data', CONT_DATA); syncProfesorConfig('gf_cont_publico', contenidoPublico()); };
   saveBloques  = function(b){ orig.saveBloques(b); syncProfesorConfig('gf_bloques_estructura', b); };
   saveBanco    = function(arr){ orig.saveBanco(arr); syncProfesorConfig('gf_banco_preguntas', arr); };
+  savePond     = function(){ orig.savePond();     syncProfesorConfig('gf_ponderaciones', POND); };
 })();
 
 // ── GESTION DE GRUPOS ─────────────────────────────────────────────
