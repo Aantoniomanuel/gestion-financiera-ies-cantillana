@@ -1912,8 +1912,9 @@ var CLAVES_PROFESOR = [
 ];
 
 // Docente: la nube manda. Si este navegador tiene datos distintos (p. ej. otro
-// ordenador con datos antiguos) se sustituyen y se recarga una vez; lo que solo
-// existe en local se sube. data.js lee estas claves al cargar, por eso se recarga.
+// ordenador con datos antiguos) se sustituyen (guardando antes una copia en
+// gf_respaldo_<clave>) y se recarga una vez; lo que solo existe en local se sube.
+// El banco de preguntas se combina por id. data.js lee estas claves al cargar.
 async function cargarConfigProfesor(){
   if(!USUARIO_ACTUAL || USUARIO_ACTUAL.rol !== 'docente') return;
   try{
@@ -1927,12 +1928,33 @@ async function cargarConfigProfesor(){
     var cambios = false, todo = '';
     CLAVES_PROFESOR.forEach(function(k){
       var local = localStorage.getItem(k);
-      if(claveMap[k] !== undefined && claveMap[k] !== null){
-        var v = JSON.stringify(claveMap[k]);
-        todo += k + v;
-        if(local !== v){ localStorage.setItem(k, v); cambios = true; }
-      } else if(local){
-        try{ syncProfesorConfig(k, JSON.parse(local)); }catch(e){}
+      var nube = claveMap[k];
+      if(nube === undefined || nube === null){
+        if(local){ try{ syncProfesorConfig(k, JSON.parse(local)); }catch(e){} }
+        return;
+      }
+      // Banco de preguntas: se combinan nube y navegador (nunca se pierden
+      // preguntas que solo estén en este navegador, p. ej. importadas por consola)
+      if(k === 'gf_banco_preguntas' && local){
+        try{
+          var arrLocal = JSON.parse(local);
+          if(Array.isArray(arrLocal) && Array.isArray(nube)){
+            var ids = {}; nube.forEach(function(q){ if(q && q.id) ids[q.id] = true; });
+            var soloLocal = arrLocal.filter(function(q){ return q && q.id && !ids[q.id]; });
+            if(soloLocal.length){
+              nube = nube.concat(soloLocal);
+              syncProfesorConfig(k, nube);
+            }
+          }
+        }catch(e){}
+      }
+      var v = JSON.stringify(nube);
+      todo += k + v;
+      if(local !== v){
+        // Copia de seguridad de lo que había en este navegador antes de sustituirlo
+        if(local){ try{ localStorage.setItem('gf_respaldo_' + k, local); }catch(e){} }
+        localStorage.setItem(k, v);
+        cambios = true;
       }
     });
 
